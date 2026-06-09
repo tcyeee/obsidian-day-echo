@@ -35,10 +35,24 @@ export default class DayEchoPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("modify", onChange));
     this.registerEvent(this.app.vault.on("delete", onChange));
     this.registerEvent(this.app.vault.on("rename", onChange));
+
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", () =>
+        this.updateStatusBarVisibility()
+      )
+    );
+    this.app.workspace.onLayoutReady(() => this.updateStatusBarVisibility());
   }
 
   onunload(): void {
     if (this.refreshTimer) window.clearTimeout(this.refreshTimer);
+    document.body.removeClass("day-echo-active");
+  }
+
+  /** Hide the global status bar while the timeline view is active. */
+  private updateStatusBarVisibility(): void {
+    const active = this.app.workspace.getActiveViewOfType(DayEchoView);
+    document.body.toggleClass("day-echo-active", !!active);
   }
 
   private inDailyFolder(path: string): boolean {

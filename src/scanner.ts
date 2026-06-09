@@ -25,11 +25,13 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
 
     const content = await app.vault.cachedRead(file);
     const body = stripFrontmatter(content);
+    const plain = toPlainText(body);
 
     entries.push({
       date,
       file,
-      previewText: toPreview(body),
+      previewText: plain.slice(0, 200),
+      searchText: plain.toLowerCase(),
       images: extractImages(body, app, file),
       tags,
     });
@@ -96,8 +98,8 @@ function safeDecode(s: string): string {
   }
 }
 
-/** Strip markup down to readable plain text, capped for use as a preview. */
-function toPreview(body: string): string {
+/** Strip markup down to readable plain text (uncapped). */
+function toPlainText(body: string): string {
   return body
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/!\[\[[^\]]*\]\]/g, " ")
@@ -106,8 +108,7 @@ function toPreview(body: string): string {
     .replace(/\[\[([^\]]*)\]\]/g, "$1")
     .replace(/[#>*_`~]/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 200);
+    .trim();
 }
 
 function dedupe(items: string[]): string[] {

@@ -5,6 +5,11 @@
   flex-direction: column;
 }
 
+/* Hide the global status bar while the timeline view is active */
+body.day-echo-active .status-bar {
+  display: none;
+}
+
 /* Toolbar */
 .de-toolbar {
   display: flex;

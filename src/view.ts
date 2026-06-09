@@ -18,7 +18,8 @@ export class DayEchoView extends ItemView {
   private entries: DiaryEntry[] = [];
   private search = "";
   private selectedTags = new Set<string>();
-  private sortAscending: boolean;
+  /** File paths of cards the user has expanded, preserved across refreshes. */
+  private expanded = new Set<string>();
 
   private listEl: HTMLElement | null = null;
   private railEl: HTMLElement | null = null;
@@ -28,7 +29,6 @@ export class DayEchoView extends ItemView {
   constructor(leaf: WorkspaceLeaf, plugin: DayEchoPlugin) {
     super(leaf);
     this.plugin = plugin;
-    this.sortAscending = plugin.settings.sortAscending;
   }
 
   getViewType(): string {
@@ -44,34 +44,34 @@ export class DayEchoView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    this.imgObserver = new IntersectionObserver(
-      (records) => {
-        for (const record of records) {
-          if (!record.isIntersecting) continue;
-          const img = record.target as HTMLImageElement;
-          const src = img.dataset.src;
-          if (src) {
-            img.src = src;
-            delete img.dataset.src;
-          }
-          this.imgObserver?.unobserve(img);
-        }
-      },
-      { root: this.containerEl, rootMargin: "300px" }
-    );
-
     await this.refresh();
   }
 
   async onClose(): Promise<void> {
     this.imgObserver?.disconnect();
     this.imgObserver = null;
+    this.listEl = null;
+    this.railEl = null;
   }
 
-  /** Re-scan the vault and rebuild the view. */
+  /** Re-scan the vault, prune stale filters, and rebuild only what changed. */
   async refresh(): Promise<void> {
     this.entries = await scanDiaries(this.app, this.plugin.settings.dailyFolder);
-    this.renderShell();
+
+    // Drop selected tags that no longer exist, so the filter can't hide everything.
+    const valid = new Set(this.allTags());
+    for (const tag of [...this.selectedTags]) {
+      if (!valid.has(tag)) this.selectedTags.delete(tag);
+    }
+
+    // Build the toolbar/body shell once; later refreshes only redraw the timeline,
+    // keeping the search box, its focus, and scroll position intact.
+    if (this.listEl) {
+      this.updateTagBtn();
+      this.renderTimeline();
+    } else {
+      this.renderShell();
+    }
   }
 
   private allTags(): string[] {
@@ -85,14 +85,15 @@ export class DayEchoView extends ItemView {
   private filtered(): DiaryEntry[] {
     const query = this.search.trim().toLowerCase();
     const list = this.entries.filter((entry) => {
-      if (query && !entry.previewText.toLowerCase().includes(query)) return false;
+      if (query && !entry.searchText.includes(query)) return false;
       for (const tag of this.selectedTags) {
         if (!entry.tags.includes(tag)) return false;
       }
       return true;
     });
+    const ascending = this.plugin.settings.sortAscending;
     list.sort((a, b) =>
-      this.sortAscending
+      ascending
         ? a.date.getTime() - b.date.getTime()
         : b.date.getTime() - a.date.getTime()
     );
@@ -126,10 +127,13 @@ export class DayEchoView extends ItemView {
 
     const sortBtn = toolbar.createEl("button", { cls: "de-tool-btn" });
     const paintSort = () =>
-      sortBtn.setText(this.sortAscending ? "Oldest first" : "Newest first");
+      sortBtn.setText(
+        this.plugin.settings.sortAscending ? "Oldest first" : "Newest first"
+      );
     paintSort();
     sortBtn.addEventListener("click", () => {
-      this.sortAscending = !this.sortAscending;
+      this.plugin.settings.sortAscending = !this.plugin.settings.sortAscending;
+      void this.plugin.saveSettings();
       paintSort();
       this.renderTimeline();
     });
@@ -137,8 +141,29 @@ export class DayEchoView extends ItemView {
     const body = root.createDiv({ cls: "de-body" });
     this.listEl = body.createDiv({ cls: "de-scroll" });
     this.railEl = body.createDiv({ cls: "de-rail" });
+    this.ensureObserver();
 
     this.renderTimeline();
+  }
+
+  /** Lazy-load thumbnails as they scroll into the timeline viewport. */
+  private ensureObserver(): void {
+    if (this.imgObserver || !this.listEl) return;
+    this.imgObserver = new IntersectionObserver(
+      (records) => {
+        for (const record of records) {
+          if (!record.isIntersecting) continue;
+          const img = record.target as HTMLImageElement;
+          const src = img.dataset.src;
+          if (src) {
+            img.src = src;
+            delete img.dataset.src;
+          }
+          this.imgObserver?.unobserve(img);
+        }
+      },
+      { root: this.listEl, rootMargin: "300px" }
+    );
   }
 
   private updateTagBtn(): void {
@@ -182,6 +207,10 @@ export class DayEchoView extends ItemView {
 
   private renderTimeline(): void {
     if (!this.listEl || !this.railEl) return;
+    const scrollTop = this.listEl.scrollTop;
+    // Release every observed thumbnail before clearing the DOM, otherwise the
+    // observer keeps references to detached <img> nodes and leaks across redraws.
+    this.imgObserver?.disconnect();
     this.listEl.empty();
     this.railEl.empty();
 
@@ -208,6 +237,7 @@ export class DayEchoView extends ItemView {
       this.renderCard(entry);
     }
     this.renderRail(years);
+    this.listEl.scrollTop = scrollTop;
   }
 
   private renderCard(entry: DiaryEntry): void {
@@ -245,29 +275,35 @@ export class DayEchoView extends ItemView {
       }
     }
 
+    const path = entry.file.path;
     let fullEl: HTMLElement | null = null;
-    const toggle = async (): Promise<void> => {
-      if (card.hasClass("is-expanded")) {
+    const setExpanded = async (want: boolean): Promise<void> => {
+      if (want) {
+        if (!fullEl) {
+          fullEl = card.createDiv({ cls: "de-full" });
+          const content = await this.app.vault.cachedRead(entry.file);
+          await MarkdownRenderer.render(
+            this.app,
+            stripFrontmatter(content),
+            fullEl,
+            path,
+            this
+          );
+        }
+        card.addClass("is-expanded");
+        this.expanded.add(path);
+      } else {
         card.removeClass("is-expanded");
-        return;
+        this.expanded.delete(path);
       }
-      if (!fullEl) {
-        fullEl = card.createDiv({ cls: "de-full" });
-        const content = await this.app.vault.cachedRead(entry.file);
-        await MarkdownRenderer.render(
-          this.app,
-          stripFrontmatter(content),
-          fullEl,
-          entry.file.path,
-          this
-        );
-      }
-      card.addClass("is-expanded");
     };
     card.addEventListener("click", (ev) => {
       if ((ev.target as HTMLElement).closest("a")) return;
-      void toggle();
+      void setExpanded(!card.hasClass("is-expanded"));
     });
+
+    // Restore expansion when a refresh rebuilds a card the user had opened.
+    if (this.expanded.has(path)) void setExpanded(true);
   }
 
   private renderRail(years: number[]): void {
