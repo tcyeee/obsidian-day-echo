@@ -1,0 +1,115 @@
+import { App, TFile, getAllTags } from "obsidian";
+import { DiaryEntry } from "./types";
+
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// Matches both Obsidian embeds `![[file]]` and markdown images `![alt](url)`.
+const IMG_RE = /!\[\[([^\]]+?)\]\]|!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
+
+/** Scan the daily folder and return parsed entries sorted newest-first. */
+export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[]> {
+  const prefix = folder ? folder.replace(/\/+$/, "") + "/" : "";
+  const files = app.vault
+    .getMarkdownFiles()
+    .filter((f) => !prefix || f.path.startsWith(prefix));
+
+  const entries: DiaryEntry[] = [];
+  for (const file of files) {
+    const date = entryDate(app, file);
+    if (!date) continue;
+
+    const cache = app.metadataCache.getFileCache(file);
+    const tags = dedupe((cache ? getAllTags(cache) ?? [] : []).filter(
+      (t) => t.toLowerCase() !== "#daily"
+    ));
+
+    const content = await app.vault.cachedRead(file);
+    const body = stripFrontmatter(content);
+
+    entries.push({
+      date,
+      file,
+      previewText: toPreview(body),
+      images: extractImages(body, app, file),
+      tags,
+    });
+  }
+
+  entries.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return entries;
+}
+
+/** Resolve the entry date from the filename, falling back to frontmatter `created`. */
+function entryDate(app: App, file: TFile): Date | null {
+  const m = DATE_RE.exec(file.basename);
+  if (m) {
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  const created = app.metadataCache.getFileCache(file)?.frontmatter?.created;
+  if (created) {
+    const d = new Date(String(created).replace(" ", "T"));
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/** Drop a leading YAML frontmatter block, returning the note body. */
+export function stripFrontmatter(content: string): string {
+  if (!content.startsWith("---")) return content;
+  const close = content.indexOf("\n---", 3);
+  if (close === -1) return content;
+  const nl = content.indexOf("\n", close + 1);
+  return nl === -1 ? "" : content.slice(nl + 1);
+}
+
+/** Collect resolved image URLs from the body in order of appearance. */
+function extractImages(body: string, app: App, file: TFile): string[] {
+  const out: string[] = [];
+  IMG_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = IMG_RE.exec(body)) !== null) {
+    const raw = m[1] !== undefined ? m[1].split("|")[0].trim() : m[2].trim();
+    const src = resolveImage(raw, app, file);
+    if (src) out.push(src);
+  }
+  return out;
+}
+
+/** Turn a raw image reference into a renderable resource URL, or null if unresolved. */
+function resolveImage(raw: string, app: App, file: TFile): string | null {
+  if (/^https?:\/\//.test(raw)) return raw;
+  const cleaned = raw.replace(/^\//, "");
+
+  let target = app.vault.getAbstractFileByPath(safeDecode(cleaned));
+  if (!(target instanceof TFile)) {
+    target = app.metadataCache.getFirstLinkpathDest(cleaned, file.path);
+  }
+  return target instanceof TFile ? app.vault.getResourcePath(target) : null;
+}
+
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/** Strip markup down to readable plain text, capped for use as a preview. */
+function toPreview(body: string): string {
+  return body
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[\[[^\]]*\]\]/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[\[([^\]]*)\]\]/g, "$1")
+    .replace(/[#>*_`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+function dedupe(items: string[]): string[] {
+  return [...new Set(items)];
+}

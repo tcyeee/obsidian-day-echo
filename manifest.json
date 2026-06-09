@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-day-echo",
+  "name": "Day Echo",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Gather all your daily notes into one vertical timeline view.",
+  "author": "tcyeee",
+  "isDesktopOnly": false
+}
