@@ -1,10 +1,16 @@
 import { App, TFile, getAllTags } from "obsidian";
-import { DiaryEntry } from "./types";
+import { DiaryEntry } from "../types";
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 // Matches both Obsidian embeds `![[file]]` and markdown images `![alt](url)`.
 const IMG_RE = /!\[\[([^\]]+?)\]\]|!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
+
+/**
+ * Parsed entries keyed by file path, tagged with the mtime they were parsed at.
+ * Lets a rescan skip the regex/plain-text work for files that have not changed.
+ */
+const parseCache = new Map<string, { mtime: number; entry: DiaryEntry }>();
 
 /** Scan the daily folder and return parsed entries sorted newest-first. */
 export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[]> {
@@ -14,9 +20,18 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
     .filter((f) => !prefix || f.path.startsWith(prefix));
 
   const entries: DiaryEntry[] = [];
+  const seen = new Set<string>();
   for (const file of files) {
     const date = entryDate(app, file);
     if (!date) continue;
+    seen.add(file.path);
+
+    const mtime = file.stat.mtime;
+    const cached = parseCache.get(file.path);
+    if (cached && cached.mtime === mtime) {
+      entries.push(cached.entry);
+      continue;
+    }
 
     const cache = app.metadataCache.getFileCache(file);
     const tags = dedupe((cache ? getAllTags(cache) ?? [] : []).filter(
@@ -27,14 +42,21 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
     const body = stripFrontmatter(content);
     const plain = toPlainText(body);
 
-    entries.push({
+    const entry: DiaryEntry = {
       date,
       file,
       previewText: plain.slice(0, 200),
       searchText: plain.toLowerCase(),
       images: extractImages(body, app, file),
       tags,
-    });
+    };
+    parseCache.set(file.path, { mtime, entry });
+    entries.push(entry);
+  }
+
+  // Drop cache entries for files that were deleted, renamed, or fell out of scope.
+  for (const path of parseCache.keys()) {
+    if (!seen.has(path)) parseCache.delete(path);
   }
 
   entries.sort((a, b) => b.date.getTime() - a.date.getTime());

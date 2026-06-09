@@ -1,5 +1,19 @@
 import { TFile } from "obsidian";
 
+/** Timeline zoom level: per-day, per-month, or per-year aggregation. */
+export type ZoomLevel = "day" | "month" | "year";
+
+/** A unit the timeline renderer draws, produced by `buildItems`. */
+export type RenderItem =
+  /** Large year divider, used in the day view. */
+  | { kind: "year"; year: number }
+  /** Month/year group header, used in the aggregated views. */
+  | { kind: "group"; key: string; label: string }
+  /** A single diary card. */
+  | { kind: "card"; entry: DiaryEntry }
+  /** A "+N more" placeholder holding the entries hidden from a group. */
+  | { kind: "fold"; key: string; hidden: DiaryEntry[] };
+
 /** One parsed daily note, ready to render on the timeline. */
 export interface DiaryEntry {
   /** Date of the entry, used for sorting and node grouping. */

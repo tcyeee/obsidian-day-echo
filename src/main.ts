@@ -1,5 +1,6 @@
 import { Plugin, TAbstractFile } from "obsidian";
-import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./view";
+import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./ui/view";
+import { DiaryNav } from "./ui/diary-nav";
 import {
   DayEchoSettings,
   DEFAULT_SETTINGS,
@@ -8,6 +9,7 @@ import {
 
 export default class DayEchoPlugin extends Plugin {
   settings: DayEchoSettings;
+  diaryNav: DiaryNav;
   private refreshTimer: number | null = null;
 
   async onload(): Promise<void> {
@@ -41,12 +43,25 @@ export default class DayEchoPlugin extends Plugin {
         this.updateStatusBarVisibility()
       )
     );
-    this.app.workspace.onLayoutReady(() => this.updateStatusBarVisibility());
+
+    this.diaryNav = new DiaryNav(this);
+    this.registerEvent(
+      this.app.workspace.on("file-open", () => this.diaryNav.refresh())
+    );
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => this.diaryNav.refresh())
+    );
+
+    this.app.workspace.onLayoutReady(() => {
+      this.updateStatusBarVisibility();
+      this.diaryNav.refresh();
+    });
   }
 
   onunload(): void {
     if (this.refreshTimer) window.clearTimeout(this.refreshTimer);
     document.body.removeClass("day-echo-active");
+    this.diaryNav.detachAll();
   }
 
   /** Hide the global status bar while the timeline view is active. */
@@ -70,6 +85,7 @@ export default class DayEchoPlugin extends Plugin {
         const view = leaf.view;
         if (view instanceof DayEchoView) void view.refresh();
       }
+      this.diaryNav.refresh();
     }, 300);
   }
 
