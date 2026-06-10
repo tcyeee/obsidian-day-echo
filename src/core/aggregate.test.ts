@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildItems, collectRuns } from "./aggregate";
+import { buildItems, prependToday } from "./aggregate";
 import { DiaryEntry, RenderItem } from "../types";
 
 /** Minimal entry fixture; buildItems only reads `date` and `images`. */
@@ -39,6 +39,17 @@ describe("buildItems · month", () => {
     expect(fold.hidden).toHaveLength(2);
   });
 
+  test("Infinity cap (month view) shows every entry without folding", () => {
+    const entries = Array.from({ length: 9 }, (_, i) =>
+      entry(`2026-06-${String(9 - i).padStart(2, "0")}`)
+    );
+
+    const items = buildItems(entries, "month", Infinity);
+
+    expect(cards(items)).toEqual(entries);
+    expect(items.filter((i) => i.kind === "fold")).toHaveLength(0);
+  });
+
   test("entries with images are chosen first, regardless of position", () => {
     // Newest entry has no image; the six older ones do. With N=6 the image
     // entries must fill the quota and the image-less newest one must fold.
@@ -70,51 +81,27 @@ describe("buildItems · month", () => {
   });
 });
 
-describe("collectRuns", () => {
-  test("merges consecutive cards into one run", () => {
-    const [a, b, c] = [entry("2026-06-03"), entry("2026-06-02"), entry("2026-06-01")];
-    const items: RenderItem[] = [
-      { kind: "group", key: "2026-06", label: "2026.06", count: 3 },
-      { kind: "card", entry: a },
-      { kind: "card", entry: b },
-      { kind: "card", entry: c },
-    ];
+describe("prependToday", () => {
+  test("prepends a dedicated today section ahead of the grouped items", () => {
+    const today = entry("2026-06-10");
+    const rest = buildItems([entry("2026-06-09")], "month", 6);
 
-    expect(collectRuns(items)).toEqual([
-      { kind: "group", key: "2026-06", label: "2026.06", count: 3 },
-      { kind: "run", entries: [a, b, c], hidden: [] },
-    ]);
+    const items = prependToday(rest, today);
+
+    expect(items[0]).toEqual({
+      kind: "group",
+      key: "today",
+      label: "今天",
+      count: 1,
+    });
+    expect(items[1]).toEqual({ kind: "card", entry: today });
+    expect(items.slice(2)).toEqual(rest);
   });
 
-  test("a fold attaches to the run it follows; headers break runs", () => {
-    const [a, b, c] = [entry("2026-06-30"), entry("2026-06-15"), entry("2026-05-01")];
-    const items: RenderItem[] = [
-      { kind: "group", key: "2026-06", label: "2026.06", count: 2 },
-      { kind: "card", entry: a },
-      { kind: "fold", key: "2026-06", hidden: [b] },
-      { kind: "group", key: "2026-05", label: "2026.05", count: 1 },
-      { kind: "card", entry: c },
-    ];
+  test("returns the items untouched when there is no today entry", () => {
+    const rest = buildItems([entry("2026-06-09")], "month", 6);
 
-    expect(collectRuns(items)).toEqual([
-      { kind: "group", key: "2026-06", label: "2026.06", count: 2 },
-      { kind: "run", entries: [a], hidden: [b] },
-      { kind: "group", key: "2026-05", label: "2026.05", count: 1 },
-      { kind: "run", entries: [c], hidden: [] },
-    ]);
-  });
-
-  test("a fold with no preceding cards still becomes its own run", () => {
-    const hidden = [entry("2026-06-01")];
-    const items: RenderItem[] = [
-      { kind: "group", key: "2026-06", label: "2026.06", count: 1 },
-      { kind: "fold", key: "2026-06", hidden },
-    ];
-
-    expect(collectRuns(items)).toEqual([
-      { kind: "group", key: "2026-06", label: "2026.06", count: 1 },
-      { kind: "run", entries: [], hidden },
-    ]);
+    expect(prependToday(rest, null)).toEqual(rest);
   });
 });
 

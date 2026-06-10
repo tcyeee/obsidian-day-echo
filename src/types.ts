@@ -12,14 +12,6 @@ export type RenderItem =
   /** A "+N more" placeholder holding the entries hidden from a group. */
   | { kind: "fold"; key: string; hidden: DiaryEntry[] };
 
-/**
- * A render item after run collection: consecutive cards merge into one run
- * (laid out as two independent columns), with any folded entries attached.
- */
-export type LayoutItem =
-  | { kind: "group"; key: string; label: string; count: number }
-  | { kind: "run"; entries: DiaryEntry[]; hidden: DiaryEntry[] };
-
 /** One parsed daily note, ready to render on the timeline. */
 export interface DiaryEntry {
   /** Date of the entry, used for sorting and node grouping. */

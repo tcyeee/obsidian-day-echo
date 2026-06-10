@@ -19,47 +19,54 @@ body.day-echo-active .status-bar {
   bottom: 12px;
   z-index: 10;
   display: flex;
-  padding: 3px;
+  padding: 4px;
   border-radius: 999px;
-  background: var(--background-secondary);
+  background: var(--background-modifier-hover);
   border: 1px solid var(--background-modifier-border);
   box-shadow: var(--shadow-s);
 }
 
-.de-zoom-opt {
+/* Scoped under .de-zoom-switch to outrank Obsidian's button:not(.clickable-icon) */
+.de-zoom-switch .de-zoom-opt {
   position: relative;
   z-index: 1;
-  width: 44px;
-  height: 24px;
+  width: 66px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: 999px;
   background: transparent;
   box-shadow: none;
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  font-size: var(--font-ui-medium);
+  line-height: 36px;
   cursor: pointer;
   transition: color 120ms ease;
 }
 
-.de-zoom-opt:hover {
+.de-zoom-switch .de-zoom-opt:hover {
+  background: transparent;
+  box-shadow: none;
   color: var(--text-normal);
 }
 
-.de-zoom-opt.is-active,
-.de-zoom-opt.is-active:hover {
-  color: var(--text-on-accent);
+.de-zoom-switch .de-zoom-opt.is-active,
+.de-zoom-switch .de-zoom-opt.is-active:hover {
+  color: var(--text-normal);
+  font-weight: 600;
 }
 
 /* The sliding highlight pill; --de-zoom-index is set from the view */
 .de-zoom-thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 44px;
-  height: 24px;
+  top: 4px;
+  left: 4px;
+  width: 66px;
+  height: 36px;
   border-radius: 999px;
-  background: var(--interactive-accent);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: var(--shadow-s);
   transform: translateX(calc(var(--de-zoom-index, 0) * 100%));
   transition: transform 160ms ease;
 }
@@ -83,6 +90,16 @@ body.day-echo-active .status-bar {
   padding: 20px 24px 80px;
 }
 
+/* Breathing room above "today" when scrolled to the very top. Sits outside
+   .de-inner so the axis line starts at the today dot, not in the blank. */
+.de-top-spacer {
+  height: 30vh;
+}
+
+.de-top-spacer.de-hidden {
+  display: none;
+}
+
 /* Caps the content width; the axis line lives here so it stays centered too. */
 .de-inner {
   max-width: 1000px;
@@ -102,13 +119,22 @@ body.day-echo-active .status-bar {
   background: var(--background-modifier-border);
 }
 
-/* Sections: one per year/month group, anchor for the dot and sticky label */
+/* Section block, now only used by the "today" hero at the timeline top */
 .de-section {
   position: relative;
   margin: 26px 0 0;
 }
 
-/* Group dot, fixed at the section's start on the axis */
+/* Month/year marker: dot + label, absolutely anchored beside the first
+   card of its group (the view sets `top` to that card's offset) */
+.de-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 112px;
+}
+
+/* Group dot on the axis */
 .de-sec-dot {
   position: absolute;
   top: 7px;
@@ -120,13 +146,27 @@ body.day-echo-active .status-bar {
   border: 2px solid var(--background-primary);
 }
 
-/* Sticky head keeps the current year/month visible left of the axis while
-   the section scrolls. Cards start right of the axis, so it overlaps nothing. */
+/* Head of the today section; group markers carry their own label now */
 .de-sec-head {
+  margin-bottom: 12px;
+}
+
+/* Sticky current-group indicator: a zero-height box pinned at the viewport
+   top; the view swaps its label to the group last scrolled past. Its
+   background covers the real marker label sliding underneath. */
+.de-sticky {
   position: sticky;
   top: 0;
-  z-index: 3;
-  margin-bottom: 12px;
+  z-index: 4;
+  height: 0;
+}
+
+.de-sticky.is-hidden {
+  visibility: hidden;
+}
+
+.de-sticky .de-sec-label {
+  background: var(--background-primary);
 }
 
 .de-sec-label {
@@ -156,15 +196,80 @@ body.day-echo-active .status-bar {
   color: var(--text-faint);
 }
 
-/* A run of cards: two independent columns, so unequal card heights in one
-   column never open a gap in the other. */
-.de-run {
+/* ===== "Today" block pinned at the top of the timeline ===== */
+
+.de-today-section {
+  margin-top: 0;
+}
+
+/* The today dot glows so the timeline visibly starts here */
+.de-today-dot {
+  background: var(--interactive-accent);
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+}
+
+.de-zoom-month .de-today-label,
+.de-zoom-year .de-today-label {
+  font-size: 1.5em;
+  color: var(--interactive-accent);
+}
+
+/* Single full-width card aligned with the regular card columns */
+.de-today-wrap {
+  /* label column (100) + dot (12) + gutter (18), same as .de-flow */
+  margin-left: 130px;
+  margin-bottom: 16px;
+}
+
+/* Brighter than regular cards: accent-tinted background and a soft glow */
+.de-card.de-today-card {
+  border-color: color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--interactive-accent) 7%,
+    var(--background-primary)
+  );
+  box-shadow: 0 0 18px
+    color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+}
+
+.de-card.de-today-card:hover {
+  border-color: var(--interactive-accent);
+}
+
+/* Empty state: a blank card inviting the first words of the day */
+.de-today-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 110px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium);
+}
+
+.de-today-empty:hover {
+  color: var(--interactive-accent);
+}
+
+.de-today-plus {
+  display: flex;
+}
+
+.de-today-plus svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The continuous two-column flow spanning every group: unequal card heights
+   never open a gap, and group boundaries never break the columns. */
+.de-flow {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   /* label column (100) + dot (12) + gutter (18) */
   margin-left: 130px;
-  margin-bottom: 16px;
 }
 
 .de-col {
@@ -189,6 +294,13 @@ body.day-echo-active .status-bar {
   transition: border-color 0.15s ease;
   content-visibility: auto;
   contain-intrinsic-size: 0 160px;
+}
+
+/* Flow cards never get shorter than half their width; taller content still
+   stretches them (aspect-ratio yields to the content-based minimum size).
+   Scoped to the columns so the full-width today card keeps its own height. */
+.de-col > .de-card {
+  aspect-ratio: 2 / 1;
 }
 
 .de-card:hover {

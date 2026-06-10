@@ -1,18 +1,22 @@
 import {
   ItemView,
   MarkdownRenderer,
+  Notice,
+  TFile,
   WorkspaceLeaf,
   setIcon,
 } from "obsidian";
 import { DiaryEntry, ZoomLevel } from "../types";
-import { buildItems, collectRuns } from "../core/aggregate";
+import { buildItems, prependToday } from "../core/aggregate";
+import { planLayout, resolveMarkerTops } from "../core/layout";
 import { scanDiaries, stripFrontmatter } from "../core/scanner";
 import type DayEchoPlugin from "../main";
 
 export const VIEW_TYPE_DAY_ECHO = "day-echo-timeline";
 
 const PREVIEW_THUMBS = 4;
-/** How many entries each month/year group shows before the rest is folded. */
+/** How many entries each year group shows before the rest is folded; the
+ * month view shows every entry without folding. */
 const REPRESENTATIVES = 6;
 /** Zoom levels from finest to coarsest. */
 const ZOOM_ORDER: ZoomLevel[] = ["month", "year"];
@@ -25,6 +29,9 @@ const WHEEL_IDLE_RESET = 200;
 /** Crossfade durations (ms): fade the old view out, then the new one in. */
 const SWAP_OUT_MS = 120;
 const SWAP_IN_MS = 180;
+/** Minimum vertical distance between group markers, so a group with one
+ * short card cannot shove its label into the next group's label. */
+const MARKER_MIN_GAP = 64;
 
 /** Where the cursor was anchored before a zoom, so the view can stay put after. */
 interface ZoomAnchor {
@@ -41,15 +48,25 @@ export class DayEchoView extends ItemView {
   private zoom: ZoomLevel;
   /** File paths of cards the user has expanded, preserved across refreshes. */
   private expanded = new Set<string>();
+  /** Group keys whose "+N" fold the user has opened, preserved likewise. */
+  private unfolded = new Set<string>();
   private wheelAccum = 0;
   private lastWheelAt = 0;
   /** True while the zoom crossfade is playing; wheel steps are ignored. */
   private swapping = false;
 
   private scrollEl: HTMLElement | null = null;
+  private spacerEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
   private zoomSwitchEl: HTMLElement | null = null;
   private imgObserver: IntersectionObserver | null = null;
+  /** Group markers on the axis, each anchored to its group's first card. */
+  private markers: { el: HTMLElement; label: string; cardEl: HTMLElement }[] =
+    [];
+  /** Re-anchors markers when column heights change (expansion, resize). */
+  private colObserver: ResizeObserver | null = null;
+  /** Label inside the sticky current-group indicator. */
+  private stickyLabelEl: HTMLElement | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: DayEchoPlugin) {
     super(leaf);
@@ -76,9 +93,14 @@ export class DayEchoView extends ItemView {
   async onClose(): Promise<void> {
     this.imgObserver?.disconnect();
     this.imgObserver = null;
+    this.colObserver?.disconnect();
+    this.colObserver = null;
     this.scrollEl = null;
+    this.spacerEl = null;
     this.listEl = null;
     this.zoomSwitchEl = null;
+    this.stickyLabelEl = null;
+    this.markers = [];
   }
 
   /** Re-scan the vault and rebuild only what changed. */
@@ -111,6 +133,10 @@ export class DayEchoView extends ItemView {
 
     const body = root.createDiv({ cls: "de-body" });
     this.scrollEl = body.createDiv({ cls: "de-scroll" });
+    // Breathing room above "today": scrolled to the top, the timeline starts
+    // 30% of the screen down. Lives outside .de-inner so the axis line
+    // (drawn on .de-inner) starts at the today dot, not in the empty space.
+    this.spacerEl = this.scrollEl.createDiv({ cls: "de-top-spacer" });
     // Inner container caps the content width and carries the axis line, so
     // both stay centered when the panel is wider than the cap.
     this.listEl = this.scrollEl.createDiv({ cls: "de-inner" });
@@ -119,6 +145,7 @@ export class DayEchoView extends ItemView {
     this.registerDomEvent(this.scrollEl, "wheel", (ev) => this.onWheel(ev), {
       passive: false,
     });
+    this.registerDomEvent(this.scrollEl, "scroll", () => this.updateSticky());
 
     this.renderZoomSwitch(root);
     this.renderTimeline();
@@ -302,85 +329,192 @@ export class DayEchoView extends ItemView {
     // Release every observed thumbnail before clearing the DOM, otherwise the
     // observer keeps references to detached <img> nodes and leaks across redraws.
     this.imgObserver?.disconnect();
+    this.colObserver?.disconnect();
+    this.colObserver = null;
+    this.markers = [];
+    this.stickyLabelEl = null;
     this.listEl.empty();
 
     // Section labels are styled per zoom level (month smaller, year larger).
     for (const level of ZOOM_ORDER) this.listEl.removeClass(`de-zoom-${level}`);
     this.listEl.addClass(`de-zoom-${this.zoom}`);
 
-    const list = this.sorted();
-    if (!list.length) {
-      this.listEl.createDiv({ cls: "de-empty", text: "No diary entries." });
+    // The today block (and its top spacer) only makes sense newest-first,
+    // where the top of the timeline is today. When today's diary exists it
+    // flows into the columns as a regular (highlighted) card under its own
+    // "今天" marker; only the create-CTA renders as a standalone block.
+    const ascending = this.plugin.settings.sortAscending;
+    this.spacerEl?.toggleClass("de-hidden", ascending);
+    const todayEntry = ascending ? null : this.findToday();
+    if (!ascending && !todayEntry) this.renderTodayCta();
+
+    // Today's entry gets its own section; drop it from the grouped flow so
+    // it does not appear twice.
+    const list = this.sorted().filter((e) => e !== todayEntry);
+    if (!list.length && !todayEntry) {
+      if (ascending) {
+        this.listEl.createDiv({ cls: "de-empty", text: "No diary entries." });
+      }
       return;
     }
 
-    const items = collectRuns(buildItems(list, this.zoom, REPRESENTATIVES));
-    let section: HTMLElement | null = null;
+    // Sticky current-group indicator: pinned at the viewport top, its text
+    // swapped on scroll to the last group that crossed the top edge.
+    const sticky = this.listEl.createDiv({ cls: "de-sticky is-hidden" });
+    this.stickyLabelEl = sticky.createDiv({ cls: "de-sec-label" });
 
-    for (const item of items) {
-      if (item.kind === "group") {
-        section = this.renderSection(item, parseInt(item.key, 10));
-      } else {
-        // A run before any header can't happen (buildItems always leads with
-        // a group), but fall back to the list so nothing is silently dropped.
-        (section ?? this.listEl).appendChild(this.buildRun(item));
+    // One continuous two-column flow for the whole timeline: group
+    // boundaries never break the columns, so months/years meet seamlessly.
+    const plan = planLayout(
+      prependToday(
+        buildItems(list, this.zoom, this.zoom === "month" ? Infinity : REPRESENTATIVES),
+        todayEntry
+      ),
+      this.unfolded,
+      estimateHeight
+    );
+    const flow = this.listEl.createDiv({ cls: "de-flow" });
+    const cols = [
+      flow.createDiv({ cls: "de-col" }),
+      flow.createDiv({ cls: "de-col" }),
+    ];
+    const cardEls = plan.cards.map((card) => {
+      const el =
+        card.fold && card.foldKey
+          ? this.buildFoldCard(card.foldKey, card.fold)
+          : this.buildCard(card.entry);
+      if (!card.fold && card.entry === todayEntry) el.addClass("de-today-card");
+      cols[card.col].appendChild(el);
+      return el;
+    });
+
+    // Group markers live outside the flow, absolutely anchored to their
+    // group's first card (positionMarkers reads its offsetTop).
+    for (const group of plan.groups) {
+      // The "today" marker reuses the glowing-dot/accent-label styling and
+      // hides the entry count; its year anchors zoom restore like the rest.
+      const isToday = group.key === "today";
+      const year = isToday ? new Date().getFullYear() : parseInt(group.key, 10);
+      const marker = this.listEl.createDiv({
+        cls: "de-marker",
+        attr: { "data-key": group.key, "data-year": String(year) },
+      });
+      marker.createDiv({
+        cls: isToday ? "de-sec-dot de-today-dot" : "de-sec-dot",
+      });
+      marker.createDiv({
+        cls: isToday ? "de-sec-label de-today-label" : "de-sec-label",
+        text: group.label,
+      });
+      if (!isToday) {
+        marker.createDiv({ cls: "de-sec-count", text: `${group.count} 篇` });
       }
+      this.markers.push({
+        el: marker,
+        label: group.label,
+        cardEl: cardEls[group.firstCard],
+      });
     }
+    this.positionMarkers();
+
+    // Column heights move when cards expand or lazily rendered cards get
+    // their real size; keep the markers glued to their first cards.
+    this.colObserver = new ResizeObserver(() => {
+      this.positionMarkers();
+      this.updateSticky();
+    });
+    for (const col of cols) this.colObserver.observe(col);
 
     this.scrollEl.scrollTop = scrollTop;
+    this.updateSticky();
   }
 
-  /** Start a new section: sticky year/month label on the left of the axis. */
-  private renderSection(
-    item: { key: string; label: string; count: number },
-    year: number
-  ): HTMLElement {
-    const section = this.listEl!.createDiv({
-      cls: "de-section",
-      attr: { "data-key": item.key, "data-year": String(year) },
+  /** Pin each group marker level with its first card, pushed apart on overlap. */
+  private positionMarkers(): void {
+    // offsetTop is relative to .de-inner (the nearest positioned ancestor),
+    // the same box the markers are positioned in.
+    const desired = this.markers.map((m) => m.cardEl.offsetTop);
+    const tops = resolveMarkerTops(desired, MARKER_MIN_GAP);
+    this.markers.forEach((m, i) => {
+      m.el.style.top = `${tops[i]}px`;
     });
-    // The dot sits at the section's start on the axis; the sticky head would
-    // drag it along while stuck, so it lives on the section itself.
-    section.createDiv({ cls: "de-sec-dot" });
-    const head = section.createDiv({ cls: "de-sec-head" });
-    head.createDiv({ cls: "de-sec-label", text: item.label });
-    head.createDiv({ cls: "de-sec-count", text: `${item.count} 篇` });
-    return section;
+  }
+
+  /** Show the last group that crossed the viewport top in the sticky label. */
+  private updateSticky(): void {
+    if (!this.stickyLabelEl || !this.scrollEl) return;
+    const topEdge = this.scrollEl.getBoundingClientRect().top;
+    let label: string | null = null;
+    for (const m of this.markers) {
+      if (m.el.getBoundingClientRect().top - topEdge < 1) label = m.label;
+      else break; // markers are in vertical order
+    }
+    this.stickyLabelEl.parentElement?.toggleClass("is-hidden", label === null);
+    if (label !== null) this.stickyLabelEl.setText(label);
+  }
+
+  /** Today's entry, if a diary for the current date exists. */
+  private findToday(): DiaryEntry | null {
+    const now = new Date();
+    return (
+      this.entries.find(
+        (e) =>
+          e.date.getFullYear() === now.getFullYear() &&
+          e.date.getMonth() === now.getMonth() &&
+          e.date.getDate() === now.getDate()
+      ) ?? null
+    );
   }
 
   /**
-   * Lay a run of cards out as two independent columns. Each card goes into
-   * the column whose estimated height is currently smaller, so a tall card
-   * in one column never forces a gap in the other.
+   * The "today" block pinned at the top of the timeline when no diary exists
+   * yet: a call-to-action card that creates and opens today's note. (An
+   * existing diary instead flows into the columns under a "今天" marker.)
    */
-  private buildRun(item: { entries: DiaryEntry[]; hidden: DiaryEntry[] }): HTMLElement {
-    const run = createDiv({ cls: "de-run" });
-    const cols = [run.createDiv({ cls: "de-col" }), run.createDiv({ cls: "de-col" })];
-    const heights = [0, 0];
-    const place = (el: HTMLElement, height: number) => {
-      const i = heights[0] <= heights[1] ? 0 : 1;
-      cols[i].appendChild(el);
-      heights[i] += height;
-    };
+  private renderTodayCta(): void {
+    const section = this.listEl!.createDiv({
+      cls: "de-section de-today-section",
+    });
+    section.createDiv({ cls: "de-sec-dot de-today-dot" });
+    const head = section.createDiv({ cls: "de-sec-head" });
+    head.createDiv({ cls: "de-sec-label de-today-label", text: "今天" });
 
-    for (const entry of item.entries) {
-      place(this.buildCard(entry), estimateHeight(entry));
+    const wrap = section.createDiv({ cls: "de-today-wrap" });
+    const card = wrap.createDiv({
+      cls: "de-card de-today-card de-today-empty",
+    });
+    const icon = card.createDiv({ cls: "de-today-plus" });
+    setIcon(icon, "plus");
+    card.createDiv({ text: "开始今天的日记" });
+    card.addEventListener("click", () => void this.createTodayNote());
+  }
+
+  /** Create (if needed) and open today's daily note. */
+  private async createTodayNote(): Promise<void> {
+    const folder = this.plugin.settings.dailyFolder.replace(/\/+$/, "");
+    const now = new Date();
+    const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
+    const path = folder ? `${folder}/${name}` : name;
+    try {
+      let file = this.app.vault.getAbstractFileByPath(path);
+      if (!(file instanceof TFile)) {
+        if (folder && !this.app.vault.getAbstractFileByPath(folder)) {
+          await this.app.vault.createFolder(folder);
+        }
+        file = await this.app.vault.create(path, "");
+      }
+      await this.app.workspace.getLeaf(false).openFile(file as TFile);
+    } catch (err) {
+      new Notice(`Day Echo: 创建今日日记失败 — ${String(err)}`);
     }
-    if (item.hidden.length) {
-      place(this.buildFoldCard(item.hidden, place), estimateHeight(item.hidden[0]));
-    }
-    return run;
   }
 
   /**
    * The "+N more" placeholder: a real preview card of the first hidden entry,
-   * dimmed by an overlay. Clicking reveals it and flows the remaining hidden
-   * entries into the columns.
+   * dimmed by an overlay. Clicking marks the group unfolded and re-renders,
+   * flowing the hidden entries into the columns in date order.
    */
-  private buildFoldCard(
-    hidden: DiaryEntry[],
-    place: (el: HTMLElement, height: number) => void
-  ): HTMLElement {
+  private buildFoldCard(key: string, hidden: DiaryEntry[]): HTMLElement {
     const card = this.buildCard(hidden[0]);
     card.addClass("de-fold-card");
 
@@ -392,11 +526,8 @@ export class DayEchoView extends ItemView {
     mask.addEventListener("click", (ev) => {
       // Keep the click from reaching the card's expand handler underneath.
       ev.stopPropagation();
-      card.removeClass("de-fold-card");
-      mask.remove();
-      for (const entry of hidden.slice(1)) {
-        place(this.buildCard(entry), estimateHeight(entry));
-      }
+      this.unfolded.add(key);
+      this.renderTimeline(); // keeps scrollTop; hidden cards join the flow
     });
     return card;
   }

@@ -1,4 +1,4 @@
-import { DiaryEntry, LayoutItem, RenderItem, ZoomLevel } from "../types";
+import { DiaryEntry, RenderItem, ZoomLevel } from "../types";
 
 /**
  * Turn sorted entries into a flat list of render items for the given zoom
@@ -26,27 +26,20 @@ export function buildItems(
 }
 
 /**
- * Merge consecutive cards into a run (one two-column layout block). A fold
- * attaches to the run it follows, so its placeholder card can take a column
- * slot. Headers break a run, so cards never share columns across a group.
+ * Put today's entry in its own "今天" section ahead of the grouped flow, so
+ * it renders as a regular column card under a dedicated marker. `entries`
+ * passed to `buildItems` must already exclude it.
  */
-export function collectRuns(items: RenderItem[]): LayoutItem[] {
-  const out: LayoutItem[] = [];
-  const tail = (): LayoutItem | undefined => out[out.length - 1];
-  for (const item of items) {
-    if (item.kind === "card") {
-      const run = tail();
-      if (run?.kind === "run" && !run.hidden.length) run.entries.push(item.entry);
-      else out.push({ kind: "run", entries: [item.entry], hidden: [] });
-    } else if (item.kind === "fold") {
-      const run = tail();
-      if (run?.kind === "run" && !run.hidden.length) run.hidden = item.hidden;
-      else out.push({ kind: "run", entries: [], hidden: item.hidden });
-    } else {
-      out.push(item);
-    }
-  }
-  return out;
+export function prependToday(
+  items: RenderItem[],
+  today: DiaryEntry | null
+): RenderItem[] {
+  if (!today) return items;
+  return [
+    { kind: "group", key: "today", label: "今天", count: 1 },
+    { kind: "card", entry: today },
+    ...items,
+  ];
 }
 
 interface Group {
