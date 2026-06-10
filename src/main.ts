@@ -105,6 +105,10 @@ export default class DayEchoPlugin extends Plugin {
       DEFAULT_SETTINGS,
       (await this.loadData()) as Partial<DayEchoSettings>
     );
+    // The "day" zoom level no longer exists; older installs may have it saved.
+    if ((this.settings.zoom as string) === "day") {
+      this.settings.zoom = "month";
+    }
   }
 
   async saveSettings(): Promise<void> {

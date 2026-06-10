@@ -30,7 +30,7 @@ export function findNeighbors<T extends { basename: string }>(
   };
 }
 
-/** Injects a prev/next bar at the top of every Markdown view showing a daily note. */
+/** Injects a prev/next bar below the content of every Markdown view showing a daily note. */
 export class DiaryNav {
   constructor(private plugin: DayEchoPlugin) {}
 
@@ -67,8 +67,9 @@ export class DiaryNav {
     if (prev) this.button(nav, view, prev, `← ${prev.basename}`, "前一篇");
     else nav.createSpan();
     if (next) this.button(nav, view, next, `${next.basename} →`, "后一篇");
+    else nav.createSpan();
     content.addClass(HOST_CLS);
-    content.prepend(nav);
+    content.appendChild(nav);
   }
 
   private button(

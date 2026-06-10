@@ -16,7 +16,7 @@ export interface DayEchoSettings {
 export const DEFAULT_SETTINGS: DayEchoSettings = {
   dailyFolder: "daily",
   sortAscending: false,
-  zoom: "day",
+  zoom: "month",
   showDiaryNav: true,
 };
 

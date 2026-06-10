@@ -45,7 +45,7 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
     const entry: DiaryEntry = {
       date,
       file,
-      previewText: plain.slice(0, 200),
+      previewText: plain.slice(0, 400),
       searchText: plain.toLowerCase(),
       images: extractImages(body, app, file),
       tags,
@@ -87,6 +87,17 @@ export function stripFrontmatter(content: string): string {
   return nl === -1 ? "" : content.slice(nl + 1);
 }
 
+/** Extensions an <img> tag can render; embeds of anything else (mp4, mov, m4a…) are skipped. */
+const IMAGE_EXTS = new Set([
+  "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "jfif",
+]);
+
+/** True if the embed target is renderable as an image. Extensionless URLs pass. */
+export function isImageRef(raw: string): boolean {
+  const m = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(raw);
+  return !m || IMAGE_EXTS.has(m[1].toLowerCase());
+}
+
 /** Collect resolved image URLs from the body in order of appearance. */
 function extractImages(body: string, app: App, file: TFile): string[] {
   const out: string[] = [];
@@ -94,6 +105,7 @@ function extractImages(body: string, app: App, file: TFile): string[] {
   let m: RegExpExecArray | null;
   while ((m = IMG_RE.exec(body)) !== null) {
     const raw = m[1] !== undefined ? m[1].split("|")[0].trim() : m[2].trim();
+    if (!isImageRef(raw)) continue;
     const src = resolveImage(raw, app, file);
     if (src) out.push(src);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildItems } from "./aggregate";
+import { buildItems, collectRuns } from "./aggregate";
 import { DiaryEntry, RenderItem } from "../types";
 
 /** Minimal entry fixture; buildItems only reads `date` and `images`. */
@@ -16,22 +16,6 @@ function entry(date: string, images = 0): DiaryEntry {
 
 const cards = (items: RenderItem[]): DiaryEntry[] =>
   items.filter((i) => i.kind === "card").map((i) => (i as { entry: DiaryEntry }).entry);
-
-describe("buildItems · day", () => {
-  test("inserts a year divider when the year changes and one card per entry", () => {
-    const entries = [entry("2026-06-02"), entry("2026-06-01"), entry("2025-12-31")];
-
-    const items = buildItems(entries, "day", 6);
-
-    expect(items).toEqual([
-      { kind: "year", year: 2026 },
-      { kind: "card", entry: entries[0] },
-      { kind: "card", entry: entries[1] },
-      { kind: "year", year: 2025 },
-      { kind: "card", entry: entries[2] },
-    ]);
-  });
-});
 
 describe("buildItems · month", () => {
   test("emits a group header per month and keeps every entry when at or under the cap", () => {
@@ -86,6 +70,54 @@ describe("buildItems · month", () => {
   });
 });
 
+describe("collectRuns", () => {
+  test("merges consecutive cards into one run", () => {
+    const [a, b, c] = [entry("2026-06-03"), entry("2026-06-02"), entry("2026-06-01")];
+    const items: RenderItem[] = [
+      { kind: "group", key: "2026-06", label: "2026.06", count: 3 },
+      { kind: "card", entry: a },
+      { kind: "card", entry: b },
+      { kind: "card", entry: c },
+    ];
+
+    expect(collectRuns(items)).toEqual([
+      { kind: "group", key: "2026-06", label: "2026.06", count: 3 },
+      { kind: "run", entries: [a, b, c], hidden: [] },
+    ]);
+  });
+
+  test("a fold attaches to the run it follows; headers break runs", () => {
+    const [a, b, c] = [entry("2026-06-30"), entry("2026-06-15"), entry("2026-05-01")];
+    const items: RenderItem[] = [
+      { kind: "group", key: "2026-06", label: "2026.06", count: 2 },
+      { kind: "card", entry: a },
+      { kind: "fold", key: "2026-06", hidden: [b] },
+      { kind: "group", key: "2026-05", label: "2026.05", count: 1 },
+      { kind: "card", entry: c },
+    ];
+
+    expect(collectRuns(items)).toEqual([
+      { kind: "group", key: "2026-06", label: "2026.06", count: 2 },
+      { kind: "run", entries: [a], hidden: [b] },
+      { kind: "group", key: "2026-05", label: "2026.05", count: 1 },
+      { kind: "run", entries: [c], hidden: [] },
+    ]);
+  });
+
+  test("a fold with no preceding cards still becomes its own run", () => {
+    const hidden = [entry("2026-06-01")];
+    const items: RenderItem[] = [
+      { kind: "group", key: "2026-06", label: "2026.06", count: 1 },
+      { kind: "fold", key: "2026-06", hidden },
+    ];
+
+    expect(collectRuns(items)).toEqual([
+      { kind: "group", key: "2026-06", label: "2026.06", count: 1 },
+      { kind: "run", entries: [], hidden },
+    ]);
+  });
+});
+
 describe("buildItems · year", () => {
   test("groups by year and folds beyond the cap", () => {
     const y2026 = Array.from({ length: 7 }, (_, i) =>
@@ -96,6 +128,11 @@ describe("buildItems · year", () => {
 
     const groups = items.filter((i) => i.kind === "group");
     expect(groups).toHaveLength(2);
+    expect(groups.map((g) => (g as { label: string }).label)).toEqual([
+      "2026",
+      "2025",
+    ]);
+    expect(groups.map((g) => (g as { count: number }).count)).toEqual([7, 1]);
     expect(cards(items)).toHaveLength(7); // 6 from 2026 + 1 from 2025
     expect(items.filter((i) => i.kind === "fold")).toHaveLength(1);
   });
