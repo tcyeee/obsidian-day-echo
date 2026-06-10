@@ -1,6 +1,5 @@
 import {
   ItemView,
-  MarkdownRenderer,
   Notice,
   TFile,
   WorkspaceLeaf,
@@ -9,38 +8,26 @@ import {
 import { DiaryEntry, ZoomLevel } from "../types";
 import { buildItems, prependToday } from "../core/aggregate";
 import { planLayout, resolveMarkerTops } from "../core/layout";
-import { scanDiaries, stripFrontmatter } from "../core/scanner";
+import { scanDiaries } from "../core/scanner";
 import type DayEchoPlugin from "../main";
+import {
+  ZOOM_ORDER,
+  ZOOM_LABELS,
+  WHEEL_STEP,
+  WHEEL_IDLE_RESET,
+  SCROLL_MAX_STEP,
+  SCROLL_MAX_SPEED,
+  SCROLL_EASE,
+  SWAP_OUT_MS,
+  SWAP_IN_MS,
+  MARKER_MIN_GAP,
+  REPRESENTATIVES,
+  ZoomAnchor,
+} from "./view-constants";
+import { buildCard, buildFoldCard, estimateHeight, pad, CardContext } from "./card-builder";
 
 export const VIEW_TYPE_DAY_ECHO = "day-echo-timeline";
 
-const PREVIEW_THUMBS = 4;
-/** How many entries each year group shows before the rest is folded; the
- * month view shows every entry without folding. */
-const REPRESENTATIVES = 6;
-/** Zoom levels from finest to coarsest. */
-const ZOOM_ORDER: ZoomLevel[] = ["month", "year"];
-const ZOOM_LABELS: Record<ZoomLevel, string> = { month: "月", year: "年" };
-/** Accumulated wheel delta needed to step one zoom level. One mouse-wheel
- * notch (~100-120) crosses it at once; a trackpad pinch builds up to it. */
-const WHEEL_STEP = 80;
-/** Gap (ms) after which a paused gesture's accumulated delta is discarded. */
-const WHEEL_IDLE_RESET = 200;
-/** Crossfade durations (ms): fade the old view out, then the new one in. */
-const SWAP_OUT_MS = 120;
-const SWAP_IN_MS = 180;
-/** Minimum vertical distance between group markers, so a group with one
- * short card cannot shove its label into the next group's label. */
-const MARKER_MIN_GAP = 64;
-
-/** Where the cursor was anchored before a zoom, so the view can stay put after. */
-interface ZoomAnchor {
-  /** Exact group key ("2026-06" or "2026") of the section under the cursor. */
-  key: string;
-  /** Its year, the fallback when the other zoom level has no such key. */
-  year: number;
-  offset: number;
-}
 
 export class DayEchoView extends ItemView {
   private plugin: DayEchoPlugin;
@@ -54,9 +41,14 @@ export class DayEchoView extends ItemView {
   private lastWheelAt = 0;
   /** True while the zoom crossfade is playing; wheel steps are ignored. */
   private swapping = false;
+  /** Smooth-scroll glide state: where it's headed and the pending frame. */
+  private scrollTarget = 0;
+  private scrollRaf: number | null = null;
 
   private scrollEl: HTMLElement | null = null;
   private spacerEl: HTMLElement | null = null;
+  /** Vault stats shown in the blank space above "today". */
+  private statsEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
   private zoomSwitchEl: HTMLElement | null = null;
   private imgObserver: IntersectionObserver | null = null;
@@ -67,6 +59,14 @@ export class DayEchoView extends ItemView {
   private colObserver: ResizeObserver | null = null;
   /** Label inside the sticky current-group indicator. */
   private stickyLabelEl: HTMLElement | null = null;
+  /** Marker tops (px, relative to .de-inner) cached by positionMarkers so
+   * the per-scroll sticky update never reads DOM layout. */
+  private markerTops: number[] = [];
+  /** .de-inner's offset from the top of the scroll content, cached likewise. */
+  private listOffsetTop = 0;
+  /** Label currently shown in the sticky indicator; null when hidden. */
+  private stickyLabel: string | null = null;
+  private reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   constructor(leaf: WorkspaceLeaf, plugin: DayEchoPlugin) {
     super(leaf);
@@ -95,12 +95,16 @@ export class DayEchoView extends ItemView {
     this.imgObserver = null;
     this.colObserver?.disconnect();
     this.colObserver = null;
+    this.stopScrollGlide();
     this.scrollEl = null;
     this.spacerEl = null;
+    this.statsEl = null;
     this.listEl = null;
     this.zoomSwitchEl = null;
     this.stickyLabelEl = null;
+    this.stickyLabel = null;
     this.markers = [];
+    this.markerTops = [];
   }
 
   /** Re-scan the vault and rebuild only what changed. */
@@ -137,6 +141,7 @@ export class DayEchoView extends ItemView {
     // 30% of the screen down. Lives outside .de-inner so the axis line
     // (drawn on .de-inner) starts at the today dot, not in the empty space.
     this.spacerEl = this.scrollEl.createDiv({ cls: "de-top-spacer" });
+    this.statsEl = this.spacerEl.createDiv({ cls: "de-stats" });
     // Inner container caps the content width and carries the axis line, so
     // both stay centered when the panel is wider than the cap.
     this.listEl = this.scrollEl.createDiv({ cls: "de-inner" });
@@ -197,13 +202,83 @@ export class DayEchoView extends ItemView {
           this.imgObserver?.unobserve(img);
         }
       },
-      { root: this.scrollEl, rootMargin: "300px" }
+      // 600px of lead ≈ 250ms at the capped glide speed, enough headroom to
+      // decode full-size photos before they reach the viewport.
+      { root: this.scrollEl, rootMargin: "600px" }
     );
   }
 
-  /** Ctrl/Cmd/Alt + wheel steps the zoom level, anchored under the cursor. */
+  /** Modifier + wheel zooms; a plain wheel becomes a smooth, capped glide. */
   private onWheel(ev: WheelEvent): void {
-    if (!(ev.ctrlKey || ev.metaKey || ev.altKey)) return;
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) {
+      this.onZoomWheel(ev);
+    } else {
+      this.onScrollWheel(ev);
+    }
+  }
+
+  /**
+   * Replace native wheel scrolling with an eased glide toward an accumulated
+   * target, capping both how far one event can push the target and how fast
+   * the view moves per frame — limiting the top scroll speed.
+   */
+  private onScrollWheel(ev: WheelEvent): void {
+    if (!this.scrollEl) return;
+    // Honor reduced motion: leave the native (instant) scroll untouched.
+    if (this.reduceMotion.matches) return;
+    ev.preventDefault();
+    // deltaMode 1 reports lines, not pixels; normalize.
+    const px = ev.deltaY * (ev.deltaMode === 1 ? 20 : 1);
+    // A fresh gesture (no glide running) starts from the live position, so
+    // scrollbar drags and programmatic jumps are never undone.
+    if (this.scrollRaf === null) this.scrollTarget = this.scrollEl.scrollTop;
+    const maxTop = this.scrollEl.scrollHeight - this.scrollEl.clientHeight;
+    this.scrollTarget = clamp(
+      this.scrollTarget + clamp(px, -SCROLL_MAX_STEP, SCROLL_MAX_STEP),
+      0,
+      maxTop
+    );
+    this.animateScroll();
+  }
+
+  /**
+   * Drive scrollTop toward the glide target, easing but speed-capped.
+   * Steps are scaled by real elapsed time (in 60fps-frame units), so the
+   * glide moves at the same speed on high-refresh displays and keeps pace
+   * across dropped frames instead of visibly slowing down.
+   */
+  private animateScroll(): void {
+    if (this.scrollRaf !== null) return;
+    let last = performance.now();
+    const step = (now: number): void => {
+      this.scrollRaf = null;
+      const el = this.scrollEl;
+      if (!el) return;
+      const diff = this.scrollTarget - el.scrollTop;
+      if (Math.abs(diff) < 1) {
+        el.scrollTop = this.scrollTarget;
+        return;
+      }
+      // Elapsed 60fps frames, capped so a long stall cannot cause a jump.
+      const frames = Math.min(Math.max((now - last) / (1000 / 60), 0.25), 3);
+      last = now;
+      const ease = 1 - (1 - SCROLL_EASE) ** frames;
+      const cap = SCROLL_MAX_SPEED * frames;
+      const eased = clamp(diff * ease, -cap, cap);
+      // Always cover at least a pixel so the glide cannot stall short.
+      el.scrollTop += Math.abs(eased) < 1 ? Math.sign(diff) : eased;
+      this.scrollRaf = requestAnimationFrame(step);
+    };
+    this.scrollRaf = requestAnimationFrame(step);
+  }
+
+  private stopScrollGlide(): void {
+    if (this.scrollRaf !== null) cancelAnimationFrame(this.scrollRaf);
+    this.scrollRaf = null;
+  }
+
+  /** Ctrl/Cmd/Alt + wheel steps the zoom level, anchored under the cursor. */
+  private onZoomWheel(ev: WheelEvent): void {
     ev.preventDefault();
     if (this.swapping) return;
 
@@ -253,9 +328,7 @@ export class DayEchoView extends ItemView {
     this.swapping = true;
     const el = this.scrollEl;
     try {
-      const reduceMotion = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
+      const reduceMotion = this.reduceMotion.matches;
       const rect = el.getBoundingClientRect();
       const originY =
         anchorClientY === null ? rect.height / 2 : anchorClientY - rect.top;
@@ -325,14 +398,19 @@ export class DayEchoView extends ItemView {
 
   private renderTimeline(): void {
     if (!this.scrollEl || !this.listEl) return;
+    // A redraw may move everything; kill any in-flight glide first.
+    this.stopScrollGlide();
     const scrollTop = this.scrollEl.scrollTop;
+    this.updateStats();
     // Release every observed thumbnail before clearing the DOM, otherwise the
     // observer keeps references to detached <img> nodes and leaks across redraws.
     this.imgObserver?.disconnect();
     this.colObserver?.disconnect();
     this.colObserver = null;
     this.markers = [];
+    this.markerTops = [];
     this.stickyLabelEl = null;
+    this.stickyLabel = null;
     this.listEl.empty();
 
     // Section labels are styled per zoom level (month smaller, year larger).
@@ -378,11 +456,19 @@ export class DayEchoView extends ItemView {
       flow.createDiv({ cls: "de-col" }),
       flow.createDiv({ cls: "de-col" }),
     ];
+    const ctx: CardContext = {
+      app: this.app,
+      component: this,
+      imgObserver: this.imgObserver,
+      expanded: this.expanded,
+      unfolded: this.unfolded,
+      onUnfold: () => this.renderTimeline(),
+    };
     const cardEls = plan.cards.map((card) => {
       const el =
         card.fold && card.foldKey
-          ? this.buildFoldCard(card.foldKey, card.fold)
-          : this.buildCard(card.entry);
+          ? buildFoldCard(card.foldKey, card.fold, ctx)
+          : buildCard(card.entry, ctx);
       if (!card.fold && card.entry === todayEntry) el.addClass("de-today-card");
       cols[card.col].appendChild(el);
       return el;
@@ -426,7 +512,19 @@ export class DayEchoView extends ItemView {
     for (const col of cols) this.colObserver.observe(col);
 
     this.scrollEl.scrollTop = scrollTop;
+    this.scrollTarget = this.scrollEl.scrollTop;
     this.updateSticky();
+  }
+
+  /** Refresh the note-count stats shown in the top blank space. */
+  private updateStats(): void {
+    if (!this.statsEl) return;
+    this.statsEl.empty();
+    this.statsEl.createSpan({
+      cls: "de-stats-num",
+      text: String(this.entries.length),
+    });
+    this.statsEl.createSpan({ text: "篇日记" });
   }
 
   /** Pin each group marker level with its first card, pushed apart on overlap. */
@@ -438,17 +536,36 @@ export class DayEchoView extends ItemView {
     this.markers.forEach((m, i) => {
       m.el.style.top = `${tops[i]}px`;
     });
+    // Cache the geometry the sticky update needs, so it never has to read
+    // layout itself: marker tops plus .de-inner's offset within the scroll
+    // content (top spacer + padding).
+    this.markerTops = tops;
+    if (this.scrollEl && this.listEl) {
+      this.listOffsetTop =
+        this.listEl.getBoundingClientRect().top -
+        this.scrollEl.getBoundingClientRect().top +
+        this.scrollEl.scrollTop;
+    }
   }
 
-  /** Show the last group that crossed the viewport top in the sticky label. */
+  /**
+   * Show the last group that crossed the viewport top in the sticky label.
+   * Runs on every scroll event, so it must stay off the layout pipeline: it
+   * compares scrollTop against the tops cached by positionMarkers (no rect
+   * reads) and touches the DOM only when the label actually changes —
+   * otherwise each scroll frame forces a synchronous reflow and the glide
+   * stutters.
+   */
   private updateSticky(): void {
     if (!this.stickyLabelEl || !this.scrollEl) return;
-    const topEdge = this.scrollEl.getBoundingClientRect().top;
+    const y = this.scrollEl.scrollTop - this.listOffsetTop;
     let label: string | null = null;
-    for (const m of this.markers) {
-      if (m.el.getBoundingClientRect().top - topEdge < 1) label = m.label;
+    for (let i = 0; i < this.markerTops.length; i++) {
+      if (this.markerTops[i] - y < 1) label = this.markers[i].label;
       else break; // markers are in vertical order
     }
+    if (label === this.stickyLabel) return;
+    this.stickyLabel = label;
     this.stickyLabelEl.parentElement?.toggleClass("is-hidden", label === null);
     if (label !== null) this.stickyLabelEl.setText(label);
   }
@@ -509,126 +626,8 @@ export class DayEchoView extends ItemView {
     }
   }
 
-  /**
-   * The "+N more" placeholder: a real preview card of the first hidden entry,
-   * dimmed by an overlay. Clicking marks the group unfolded and re-renders,
-   * flowing the hidden entries into the columns in date order.
-   */
-  private buildFoldCard(key: string, hidden: DiaryEntry[]): HTMLElement {
-    const card = this.buildCard(hidden[0]);
-    card.addClass("de-fold-card");
-
-    const mask = card.createDiv({ cls: "de-fold-mask" });
-    const icon = mask.createDiv({ cls: "de-fold-icon" });
-    setIcon(icon, "chevrons-down");
-    mask.createDiv({ cls: "de-fold-count", text: `+${hidden.length}` });
-
-    mask.addEventListener("click", (ev) => {
-      // Keep the click from reaching the card's expand handler underneath.
-      ev.stopPropagation();
-      this.unfolded.add(key);
-      this.renderTimeline(); // keeps scrollTop; hidden cards join the flow
-    });
-    return card;
-  }
-
-  /** Build one entry card with date label, preview, and expansion. */
-  private buildCard(entry: DiaryEntry): HTMLElement {
-    const card = createDiv({ cls: "de-card" });
-
-    const label = card.createDiv({
-      cls: "de-card-date",
-      text: fullDate(entry.date),
-    });
-    label.setAttr("title", "Open this day's note");
-    label.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      this.app.workspace.getLeaf(false).openFile(entry.file);
-    });
-
-    const preview = card.createDiv({ cls: "de-preview" });
-
-    if (entry.previewText) {
-      preview.createDiv({ cls: "de-text", text: entry.previewText });
-    }
-    if (entry.images.length) {
-      const thumbs = preview.createDiv({ cls: "de-thumbs" });
-      for (const src of entry.images.slice(0, PREVIEW_THUMBS)) {
-        const img = thumbs.createEl("img", { cls: "de-thumb" });
-        img.dataset.src = src;
-        this.imgObserver?.observe(img);
-      }
-      const extra = entry.images.length - PREVIEW_THUMBS;
-      if (extra > 0) thumbs.createDiv({ cls: "de-more", text: `+${extra}` });
-    }
-    if (entry.tags.length) {
-      const tagWrap = preview.createDiv({ cls: "de-tags" });
-      for (const tag of entry.tags) {
-        tagWrap.createSpan({ cls: "de-tag", text: tag });
-      }
-    }
-
-    const path = entry.file.path;
-    let fullEl: HTMLElement | null = null;
-    const setExpanded = async (want: boolean): Promise<void> => {
-      if (want) {
-        if (!fullEl) {
-          fullEl = card.createDiv({ cls: "de-full" });
-          const content = await this.app.vault.cachedRead(entry.file);
-          await MarkdownRenderer.render(
-            this.app,
-            stripFrontmatter(content),
-            fullEl,
-            path,
-            this
-          );
-        }
-        card.addClass("is-expanded");
-        this.expanded.add(path);
-      } else {
-        card.removeClass("is-expanded");
-        this.expanded.delete(path);
-      }
-    };
-    card.addEventListener("click", (ev) => {
-      if ((ev.target as HTMLElement).closest("a")) return;
-      void setExpanded(!card.hasClass("is-expanded"));
-    });
-
-    // Restore expansion when a refresh rebuilds a card the user had opened.
-    if (this.expanded.has(path)) void setExpanded(true);
-
-    return card;
-  }
-
 }
 
-/**
- * Estimate a collapsed card's rendered height in px, for column balancing.
- * Collapsed cards are predictable: fixed 96x72 thumbs, text clamped to four
- * lines, one tag row. Estimates only steer placement, so being a few pixels
- * off merely leaves the two column bottoms slightly uneven.
- */
-function estimateHeight(entry: DiaryEntry): number {
-  let h = 26 + 26 + 16; // padding+border, date line, run gap
-  if (entry.previewText) {
-    // ~50 chars per rendered line, clamped to 4 lines of ~26px each.
-    h += Math.min(4, Math.ceil(entry.previewText.length / 50)) * 26;
-  }
-  if (entry.images.length) {
-    const cells =
-      Math.min(entry.images.length, PREVIEW_THUMBS) +
-      (entry.images.length > PREVIEW_THUMBS ? 1 : 0);
-    h += Math.ceil(cells / 3) * 80 + 10; // ~3 thumbs per column row
-  }
-  if (entry.tags.length) h += 34;
-  return h;
-}
-
-function fullDate(d: Date): string {
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
-}
-
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, v));
 }
