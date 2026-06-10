@@ -22,7 +22,7 @@ import {
   SWAP_IN_MS,
   MARKER_MIN_GAP,
   REPRESENTATIVES,
-  ZoomAnchor,
+  type ZoomAnchor,
 } from "./view-constants";
 import { buildCard, buildFoldCard, estimateHeight, CardContext } from "./card-builder";
 
@@ -609,8 +609,8 @@ export class DayEchoView extends ItemView {
   private async createTodayNote(): Promise<void> {
     const folder = this.plugin.settings.dailyFolder.replace(/\/+$/, "");
     const now = new Date();
-    const p = (n: number) => (n < 10 ? `0${n}` : String(n));
-    const name = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}.md`;
+    const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+    const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
     const path = folder ? `${folder}/${name}` : name;
     try {
       let file = this.app.vault.getAbstractFileByPath(path);
