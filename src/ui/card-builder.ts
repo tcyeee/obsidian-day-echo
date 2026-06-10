@@ -40,6 +40,8 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
     const thumbs = preview.createDiv({ cls: "de-thumbs" });
     for (const src of entry.images.slice(0, PREVIEW_THUMBS)) {
       const img = thumbs.createEl("img", { cls: "de-thumb" });
+      // Thumbs show full-size vault images; decode them off the critical
+      // path so a large photo cannot stall scrolling when it loads.
       img.decoding = "async";
       img.dataset.src = src;
       ctx.imgObserver?.observe(img);
@@ -120,13 +122,14 @@ export function buildFoldCard(
 export function estimateHeight(entry: DiaryEntry): number {
   let h = 26 + 26 + 16; // padding+border, date line, run gap
   if (entry.previewText) {
+    // ~50 chars per rendered line, clamped to 4 lines of ~26px each.
     h += Math.min(4, Math.ceil(entry.previewText.length / 50)) * 26;
   }
   if (entry.images.length) {
     const cells =
       Math.min(entry.images.length, PREVIEW_THUMBS) +
       (entry.images.length > PREVIEW_THUMBS ? 1 : 0);
-    h += Math.ceil(cells / 3) * 80 + 10;
+    h += Math.ceil(cells / 3) * 80 + 10; // ~3 thumbs per column row
   }
   if (entry.tags.length) h += 34;
   return Math.max(h, 140);
