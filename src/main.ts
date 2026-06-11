@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS,
   DayEchoSettingTab,
 } from "./settings";
+import { setLocale } from "./i18n";
 
 export default class DayEchoPlugin extends Plugin {
   settings: DayEchoSettings;
@@ -15,6 +16,7 @@ export default class DayEchoPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    setLocale(this.settings.language);
 
     this.registerView(
       VIEW_TYPE_DAY_ECHO,
@@ -62,14 +64,14 @@ export default class DayEchoPlugin extends Plugin {
 
   onunload(): void {
     if (this.refreshTimer) window.clearTimeout(this.refreshTimer);
-    document.body.removeClass("day-echo-active");
+    activeDocument.body.removeClass("day-echo-active");
     this.diaryNav.detachAll();
   }
 
   /** Hide the global status bar while the timeline view is active. */
   private updateStatusBarVisibility(): void {
     const active = this.app.workspace.getActiveViewOfType(DayEchoView);
-    document.body.toggleClass("day-echo-active", !!active);
+    activeDocument.body.toggleClass("day-echo-active", !!active);
   }
 
   private inDailyFolder(path: string): boolean {
@@ -89,6 +91,16 @@ export default class DayEchoPlugin extends Plugin {
       }
       this.diaryNav.refresh();
     }, 300);
+  }
+
+  /** Re-resolve the active locale and redraw everything that shows text. */
+  refreshLanguage(): void {
+    setLocale(this.settings.language);
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAY_ECHO)) {
+      const view = leaf.view;
+      if (view instanceof DayEchoView) void view.refresh();
+    }
+    this.diaryNav.refresh();
   }
 
   async activateView(): Promise<void> {

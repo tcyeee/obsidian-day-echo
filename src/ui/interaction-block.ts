@@ -1,5 +1,6 @@
-import { Notice, TFile, parseYaml } from "obsidian";
+import { Notice, TFile, normalizePath, parseYaml } from "obsidian";
 import type DayEchoPlugin from "../main";
+import { t } from "../i18n";
 
 interface BlockConfig {
   date?: string;
@@ -30,8 +31,10 @@ async function renderBlock(
   let initMood: number | null = null;
   if (file instanceof TFile) {
     const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-    if (typeof fm?.energy === "number") initEnergy = fm.energy;
-    if (typeof fm?.mood === "number") initMood = fm.mood;
+    const energy = fm?.["energy"] as number | undefined;
+    const mood = fm?.["mood"] as number | undefined;
+    if (typeof energy === "number") initEnergy = energy;
+    if (typeof mood === "number") initMood = mood;
   }
 
   el.addClass("ei-block");
@@ -40,23 +43,26 @@ async function renderBlock(
   let energy = initEnergy;
   let mood = initMood;
 
-  renderRatingField(el, "精力", initEnergy, (v) => { energy = v; });
-  renderRatingField(el, "心情", initMood, (v) => { mood = v; });
+  renderRatingField(el, t("interaction.energy"), initEnergy, (v) => { energy = v; });
+  renderRatingField(el, t("interaction.mood"), initMood, (v) => { mood = v; });
 
   const footer = el.createDiv({ cls: "ei-footer" });
-  const saveBtn = footer.createEl("button", { cls: "ei-save mod-cta", text: "保存" });
+  const saveBtn = footer.createEl("button", {
+    cls: "ei-save mod-cta",
+    text: t("interaction.save"),
+  });
   const status = footer.createDiv({ cls: "ei-status" });
 
   saveBtn.addEventListener("click", async () => {
     if (energy === null || mood === null) {
-      setStatus(status, "请先完成评分", false);
+      setStatus(status, t("interaction.rateFirst"), false);
       return;
     }
     try {
       await writeScores(plugin, filePath, { energy, mood });
-      setStatus(status, "已保存 ✓", true);
+      setStatus(status, t("interaction.saved"), true);
     } catch (err) {
-      const msg = `保存失败: ${String(err)}`;
+      const msg = t("interaction.saveFailed", { error: String(err) });
       setStatus(status, msg, false);
       new Notice(msg);
     }
@@ -173,7 +179,7 @@ function resolveDate(dateStr: string): string {
 
 function buildFilePath(plugin: DayEchoPlugin, dateStr: string): string {
   const folder = plugin.settings.dailyFolder.replace(/\/+$/, "");
-  return folder ? `${folder}/${dateStr}.md` : `${dateStr}.md`;
+  return normalizePath(folder ? `${folder}/${dateStr}.md` : `${dateStr}.md`);
 }
 
 function formatDate(d: Date): string {

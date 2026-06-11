@@ -1,5 +1,6 @@
 import type { MarkdownView, TFile } from "obsidian";
 import type DayEchoPlugin from "../main";
+import { t } from "../i18n";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const NAV_CLS = "de-nav";
@@ -43,8 +44,8 @@ export class DiaryNav {
 
   /** Remove every injected bar, e.g. on unload or when the setting is off. */
   detachAll(): void {
-    document.querySelectorAll(`.${NAV_CLS}`).forEach((el) => el.remove());
-    document
+    activeDocument.querySelectorAll(`.${NAV_CLS}`).forEach((el) => el.remove());
+    activeDocument
       .querySelectorAll(`.${HOST_CLS}`)
       .forEach((el) => el.removeClass(HOST_CLS));
   }
@@ -64,9 +65,9 @@ export class DiaryNav {
     if (!prev && !next) return;
 
     const nav = createDiv({ cls: NAV_CLS });
-    if (prev) this.button(nav, view, prev, `← ${prev.basename}`, "前一篇");
+    if (prev) this.button(nav, view, prev, `← ${prev.basename}`, t("nav.prev"));
     else nav.createSpan();
-    if (next) this.button(nav, view, next, `${next.basename} →`, "后一篇");
+    if (next) this.button(nav, view, next, `${next.basename} →`, t("nav.next"));
     else nav.createSpan();
     content.addClass(HOST_CLS);
     content.appendChild(nav);

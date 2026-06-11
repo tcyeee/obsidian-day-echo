@@ -1,41 +1,107 @@
 # Day Echo
 
-一个用于增强 Obsidian 原生日记（Daily Notes）功能的插件。
+> Gather all your daily notes into one vertical timeline view.
 
-## 简介
+Day Echo is an [Obsidian](https://obsidian.md) plugin that turns your scattered daily notes into a single, scrollable timeline — so you can scan months and years of journaling at a glance, reopen any day in a click, and keep writing without losing the thread.
 
-Day Echo 旨在让 Obsidian 的日记体验更加顺手，在原生日记功能的基础上提供额外的增强能力。
+<!-- Add a screenshot or GIF of the timeline here. -->
 
-## 功能
+![](./public/1.png)
 
-### 时间轴视图
 
-把 `daily/` 文件夹里的所有日记汇聚到一个竖向时间轴页面：
+## Features
 
-- 左侧贯穿轴线，年份做节点，日记卡片按时间排列。
-- 卡片默认显示文字预览与图片缩略（懒加载），点击就地展开当天全文，再点收起。
-- 点日期节点直接打开当天日记原文。
-- 顶部支持关键词搜索、标签筛选、排序方向切换；右侧年份尺一键跳转到任意年份。
+### Vertical timeline
 
-通过左侧 ribbon 的日历图标，或命令面板「Open Day Echo timeline」打开。
+Collects every daily note in your diary folder into one continuous, two-column timeline:
 
-在设置中可配置日记文件夹路径与默认排序方向。
+- A left-hand axis marks each section (month or year), with a running entry count.
+- Cards flow newest-first (or oldest-first) and are balanced across two columns.
+- A sticky label pins the current section to the top as you scroll, and a **back-to-top** button slides in once you've scrolled past one full screen.
+- The top of the timeline shows a small "My Journey" header with your total entry count.
 
-## 功能规划
+Open it from the **calendar** ribbon icon on the left, or via the command palette: **Open Day Echo timeline**.
 
-- [ ] 那年今日：高亮历史上的今天
+### Rich cards
 
-## 安装
+Each day is rendered as a preview card:
 
-插件发布后将支持通过 Obsidian 社区插件市场安装。当前仍在开发中。
+- A text snippet of the note (frontmatter, code, and images stripped out).
+- Lazy-loaded image thumbnails in a stacked, polaroid style — full-size images decode off the critical path so scrolling stays smooth.
+- The note's tags (excluding the `#daily` marker).
 
-## 开发
+Click a card to open the full day's note in a **modal popup**; click the date label to open the note in the editor.
+
+### Month / Year zoom
+
+A floating segmented control in the bottom-right corner switches between **month** and **year** aggregation:
+
+- Click a segment, or hold **Ctrl / Cmd / Alt** and scroll the wheel to zoom in or out.
+- Zooming plays a smooth crossfade and keeps the section under your cursor anchored in place.
+- In year view, only representative entries are shown per year, with a **"show more"** card to expand the rest.
+
+Plain wheel scrolling is replaced by an eased, speed-capped glide for a calmer reading feel. (Both effects respect your system's *reduce motion* setting.)
+
+### Today shortcut
+
+When viewing newest-first, the top of the timeline always reflects today:
+
+- If today's note already exists, it appears as a highlighted card under a "today" marker.
+- If it doesn't, a **"start today's diary"** card creates and opens the note for you.
+
+### Daily-note navigation bar
+
+When you open any date-named daily note (`YYYY-MM-DD`), Day Echo injects a **previous / next** bar at the bottom of the note, so you can step through adjacent days without leaving the editor. This can be toggled off in settings.
+
+### Energy & mood block
+
+Drop an `echo-interaction` code block into any note to rate a day's **energy** and **mood** on a 1–5 scale. Saving writes the scores into that day's daily-note frontmatter (`energy` / `mood`):
+
+````markdown
+```echo-interaction
+date: yesterday
+```
+````
+
+`date` accepts `yesterday` (default), `today`, or an explicit `YYYY-MM-DD`.
+
+The timeline refreshes automatically whenever notes in the diary folder are created, modified, renamed, or deleted.
+
+## Settings
+
+| Setting | Description |
+| --- | --- |
+| **Daily notes folder** | Folder scanned for daily notes, relative to the vault root. Default: `daily`. |
+| **Oldest first** | Default sort direction. Off (default) shows the newest entries at the top. |
+| **Show diary navigation** | Show the previous / next bar on top of open daily notes. |
+
+Day Echo treats notes named `YYYY-MM-DD.md` inside the daily folder as diary entries.
+
+## Installation
+
+### From within Obsidian (once published)
+
+1. Open **Settings → Community plugins** and disable Restricted Mode.
+2. Click **Browse**, search for **Day Echo**, and install it.
+3. Enable the plugin.
+
+### Manual
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release.
+2. Copy them into `<your-vault>/.obsidian/plugins/day-echo/`.
+3. Reload Obsidian and enable **Day Echo** in **Settings → Community plugins**.
+
+Requires Obsidian `1.5.7` or newer. Works on both desktop and mobile.
+
+## Development
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev      # watch + rebuild
+pnpm build    # type-check + production build
+pnpm test     # run the unit tests (vitest)
 ```
 
-## 许可证
+## License
 
 [MIT](LICENSE)

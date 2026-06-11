@@ -5,5 +5,5 @@
   "minAppVersion": "1.5.7",
   "description": "Gather all your daily notes into one vertical timeline view.",
   "author": "tcyeee",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }

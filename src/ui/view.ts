@@ -4,6 +4,7 @@ import {
   Scope,
   TFile,
   WorkspaceLeaf,
+  normalizePath,
   setIcon,
 } from "obsidian";
 import { DiaryEntry, ZoomLevel } from "../types";
@@ -13,7 +14,6 @@ import { scanDiaries } from "../core/scanner";
 import type DayEchoPlugin from "../main";
 import {
   ZOOM_ORDER,
-  ZOOM_LABELS,
   WHEEL_STEP,
   WHEEL_IDLE_RESET,
   SCROLL_MAX_STEP,
@@ -26,6 +26,7 @@ import {
   type ZoomAnchor,
 } from "./view-constants";
 import { buildCard, buildFoldCard, estimateHeight, type CardContext } from "./card-builder";
+import { t } from "../i18n";
 
 export const VIEW_TYPE_DAY_ECHO = "day-echo-timeline";
 
@@ -190,7 +191,7 @@ export class DayEchoView extends ItemView {
     for (const level of ZOOM_ORDER) {
       const btn = wrap.createEl("button", {
         cls: "de-zoom-opt",
-        text: ZOOM_LABELS[level],
+        text: t(`zoom.${level}`),
       });
       btn.addEventListener("click", () => void this.applyZoom(level, null));
     }
@@ -202,7 +203,7 @@ export class DayEchoView extends ItemView {
   private updateZoomSwitch(): void {
     if (!this.zoomSwitchEl) return;
     const idx = ZOOM_ORDER.indexOf(this.zoom);
-    this.zoomSwitchEl.style.setProperty("--de-zoom-index", String(idx));
+    this.zoomSwitchEl.setCssProps({ "--de-zoom-index": String(idx) });
     const opts =
       this.zoomSwitchEl.querySelectorAll<HTMLElement>(".de-zoom-opt");
     opts.forEach((opt, i) => opt.toggleClass("is-active", i === idx));
@@ -215,13 +216,13 @@ export class DayEchoView extends ItemView {
     const reduced = this.reduceMotion.matches;
     if (show) {
       el.removeClass("is-hidden");
-      this.zoomSwitchEl?.style.setProperty("--de-btt-height", "36px");
+      this.zoomSwitchEl?.setCssProps({ "--de-btt-height": "36px" });
       el.animate(
         { height: ["0px", "36px"], opacity: [0, 1] },
         { duration: reduced ? 0 : 200, easing: "ease-out" }
       );
     } else {
-      this.zoomSwitchEl?.style.setProperty("--de-btt-height", "0px");
+      this.zoomSwitchEl?.setCssProps({ "--de-btt-height": "0px" });
       const anim = el.animate(
         { height: ["36px", "0px"], opacity: [1, 0] },
         { duration: reduced ? 0 : 160, easing: "ease-in", fill: "forwards" }
@@ -317,13 +318,13 @@ export class DayEchoView extends ItemView {
       const eased = clamp(diff * ease, -cap, cap);
       // Always cover at least a pixel so the glide cannot stall short.
       el.scrollTop += Math.abs(eased) < 1 ? Math.sign(diff) : eased;
-      this.scrollRaf = requestAnimationFrame(step);
+      this.scrollRaf = window.requestAnimationFrame(step);
     };
-    this.scrollRaf = requestAnimationFrame(step);
+    this.scrollRaf = window.requestAnimationFrame(step);
   }
 
   private stopScrollGlide(): void {
-    if (this.scrollRaf !== null) cancelAnimationFrame(this.scrollRaf);
+    if (this.scrollRaf !== null) window.cancelAnimationFrame(this.scrollRaf);
     this.scrollRaf = null;
   }
 
@@ -382,7 +383,7 @@ export class DayEchoView extends ItemView {
       const rect = el.getBoundingClientRect();
       const originY =
         anchorClientY === null ? rect.height / 2 : anchorClientY - rect.top;
-      el.style.transformOrigin = `50% ${originY}px`;
+      el.setCssProps({ "--de-zoom-origin-y": `${originY}px` });
       // Coarser = everything shrinks away; finer = everything grows closer.
       const [outScale, inScale] = coarser ? [0.96, 1.04] : [1.04, 0.96];
 
@@ -408,7 +409,7 @@ export class DayEchoView extends ItemView {
         { duration: reduceMotion ? 0 : SWAP_IN_MS, easing: "ease-out" }
       );
       await fadeIn.finished.catch(() => {});
-      el.style.transformOrigin = "";
+      el.setCssProps({ "--de-zoom-origin-y": "" });
     } finally {
       this.swapping = false;
     }
@@ -481,7 +482,7 @@ export class DayEchoView extends ItemView {
     const list = this.sorted().filter((e) => e !== todayEntry);
     if (!list.length && !todayEntry) {
       if (ascending) {
-        this.listEl.createDiv({ cls: "de-empty", text: "No diary entries." });
+        this.listEl.createDiv({ cls: "de-empty", text: t("view.empty") });
       }
       return;
     }
@@ -496,7 +497,8 @@ export class DayEchoView extends ItemView {
     const plan = planLayout(
       prependToday(
         buildItems(list, this.zoom, this.zoom === "month" ? Infinity : REPRESENTATIVES),
-        todayEntry
+        todayEntry,
+        t("view.today")
       ),
       this.unfolded,
       estimateHeight
@@ -542,7 +544,10 @@ export class DayEchoView extends ItemView {
         text: group.label,
       });
       if (!isToday) {
-        marker.createDiv({ cls: "de-sec-count", text: `${group.count} 篇` });
+        marker.createDiv({
+          cls: "de-sec-count",
+          text: t("view.entryCount", { count: group.count }),
+        });
       }
       this.markers.push({
         el: marker,
@@ -569,16 +574,19 @@ export class DayEchoView extends ItemView {
   private updateStats(): void {
     if (!this.statsEl) return;
     this.statsEl.empty();
-    this.statsEl.createDiv({ cls: "de-stats-title", text: "My Journey" });
+    this.statsEl.createDiv({ cls: "de-stats-title", text: t("view.stats.title") });
     this.statsEl.createDiv({
       cls: "de-stats-subtitle",
-      text: "Every sprinkle of joy recorded forever.",
+      text: t("view.stats.subtitle"),
     });
     this.statsEl.createSpan({
       cls: "de-stats-num",
       text: String(this.entries.length),
     });
-    this.statsEl.createSpan({ cls: "de-stats-count-label", text: "篇日记" });
+    this.statsEl.createSpan({
+      cls: "de-stats-count-label",
+      text: t("view.stats.countLabel"),
+    });
   }
 
   /** Pin each group marker level with its first card, pushed apart on overlap. */
@@ -588,7 +596,7 @@ export class DayEchoView extends ItemView {
     const desired = this.markers.map((m) => m.cardEl.offsetTop);
     const tops = resolveMarkerTops(desired, MARKER_MIN_GAP);
     this.markers.forEach((m, i) => {
-      m.el.style.top = `${tops[i]}px`;
+      m.el.setCssProps({ "--de-marker-top": `${tops[i]}px` });
     });
     // Cache the geometry the sticky update needs, so it never has to read
     // layout itself: marker tops plus .de-inner's offset within the scroll
@@ -654,7 +662,7 @@ export class DayEchoView extends ItemView {
     });
     section.createDiv({ cls: "de-sec-dot de-today-dot" });
     const head = section.createDiv({ cls: "de-sec-head" });
-    head.createDiv({ cls: "de-sec-label de-today-label", text: "今天" });
+    head.createDiv({ cls: "de-sec-label de-today-label", text: t("view.today") });
 
     const wrap = section.createDiv({ cls: "de-today-wrap" });
     const card = wrap.createDiv({
@@ -662,17 +670,20 @@ export class DayEchoView extends ItemView {
     });
     const icon = card.createDiv({ cls: "de-today-plus" });
     setIcon(icon, "plus");
-    card.createDiv({ text: "开始今天的日记" });
+    card.createDiv({ text: t("view.todayCta") });
     card.addEventListener("click", () => void this.createTodayNote());
   }
 
   /** Create (if needed) and open today's daily note. */
   private async createTodayNote(): Promise<void> {
-    const folder = this.plugin.settings.dailyFolder.replace(/\/+$/, "");
+    const rawFolder = this.plugin.settings.dailyFolder.replace(/\/+$/, "");
     const now = new Date();
     const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
     const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
-    const path = folder ? `${folder}/${name}` : name;
+    const path = normalizePath(rawFolder ? `${rawFolder}/${name}` : name);
+    // Derive the (already normalized) parent folder from the final path so the
+    // Vault API never sees an un-normalized, user-defined path.
+    const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
     try {
       let file = this.app.vault.getAbstractFileByPath(path);
       if (!(file instanceof TFile)) {
@@ -683,7 +694,7 @@ export class DayEchoView extends ItemView {
       }
       await this.app.workspace.getLeaf(false).openFile(file as TFile);
     } catch (err) {
-      new Notice(`Day Echo: 创建今日日记失败 — ${String(err)}`);
+      new Notice(t("view.createFailed", { error: String(err) }));
     }
   }
 

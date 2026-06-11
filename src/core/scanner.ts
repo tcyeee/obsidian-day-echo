@@ -70,7 +70,7 @@ function entryDate(app: App, file: TFile): Date | null {
     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     if (!isNaN(d.getTime())) return d;
   }
-  const created = app.metadataCache.getFileCache(file)?.frontmatter?.created;
+  const created = app.metadataCache.getFileCache(file)?.frontmatter?.["created"] as string | undefined;
   if (created) {
     const d = new Date(String(created).replace(" ", "T"));
     if (!isNaN(d.getTime())) return d;

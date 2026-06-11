@@ -6,7 +6,6 @@ export const PREVIEW_THUMBS = 3;
 export const REPRESENTATIVES = 6;
 /** Zoom levels from finest to coarsest. */
 export const ZOOM_ORDER: ZoomLevel[] = ["month", "year"];
-export const ZOOM_LABELS: Record<ZoomLevel, string> = { month: "月", year: "年" };
 /** Accumulated wheel delta needed to step one zoom level. */
 export const WHEEL_STEP = 80;
 /** Gap (ms) after which a paused gesture's accumulated delta is discarded. */

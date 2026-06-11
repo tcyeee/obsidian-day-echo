@@ -2,6 +2,7 @@ import { App, Component, setIcon } from "obsidian";
 import type { DiaryEntry } from "../types";
 import { PREVIEW_THUMBS } from "./view-constants";
 import { openDiaryModal } from "./diary-modal";
+import { t } from "../i18n";
 
 /**
  * Dependencies injected by DayEchoView when building cards, so card-builder
@@ -24,7 +25,7 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
     cls: "de-card-date",
     text: fullDate(entry.date),
   });
-  label.setAttr("title", "Open this day's note");
+  label.setAttr("title", t("card.openNote"));
   label.addEventListener("click", (ev) => {
     ev.stopPropagation();
     ctx.app.workspace.getLeaf(false).openFile(entry.file);
@@ -40,7 +41,7 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
     const previewImages = entry.images.slice(0, PREVIEW_THUMBS);
     for (const [idx, src] of previewImages.entries()) {
       const frame = thumbs.createDiv({ cls: "de-polaroid" });
-      frame.style.setProperty("--de-thumb-index", String(idx));
+      frame.setCssProps({ "--de-thumb-index": String(idx) });
       const img = frame.createEl("img", { cls: "de-thumb" });
       // Thumbs show full-size vault images; decode them off the critical
       // path so a large photo cannot stall scrolling when it loads.
@@ -81,8 +82,11 @@ export function buildFoldCard(
   const icon = action.createDiv({ cls: "de-fold-icon" });
   setIcon(icon, "chevrons-down");
   const copy = action.createDiv({ cls: "de-fold-copy" });
-  copy.createDiv({ cls: "de-fold-title", text: "显示更多" });
-  copy.createDiv({ cls: "de-fold-count", text: `${hidden.length} 篇日记` });
+  copy.createDiv({ cls: "de-fold-title", text: t("card.showMore") });
+  copy.createDiv({
+    cls: "de-fold-count",
+    text: t("card.diaryCount", { count: hidden.length }),
+  });
 
   mask.addEventListener("click", (ev) => {
     ev.stopPropagation();

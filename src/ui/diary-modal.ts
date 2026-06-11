@@ -1,6 +1,7 @@
 import { App, Component, MarkdownRenderer, Scope, setIcon } from "obsidian";
 import type { DiaryEntry } from "../types";
 import { stripFrontmatter } from "../core/scanner";
+import { t } from "../i18n";
 
 export function openDiaryModal(
   entry: DiaryEntry,
@@ -9,7 +10,7 @@ export function openDiaryModal(
 ): void {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const overlay = document.body.createDiv({ cls: "de-modal-overlay" });
+  const overlay = activeDocument.body.createDiv({ cls: "de-modal-overlay" });
   const modal = overlay.createDiv({ cls: "de-modal" });
 
   // Header
@@ -18,7 +19,7 @@ export function openDiaryModal(
     cls: "de-modal-date",
     text: fullDate(entry.date),
   });
-  dateBadge.title = "Open this day's note";
+  dateBadge.title = t("card.openNote");
   dateBadge.addEventListener("click", () => {
     app.workspace.getLeaf(false).openFile(entry.file);
     close();

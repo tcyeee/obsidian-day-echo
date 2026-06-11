@@ -86,7 +86,7 @@ describe("prependToday", () => {
     const today = entry("2026-06-10");
     const rest = buildItems([entry("2026-06-09")], "month", 6);
 
-    const items = prependToday(rest, today);
+    const items = prependToday(rest, today, "今天");
 
     expect(items[0]).toEqual({
       kind: "group",
@@ -101,7 +101,7 @@ describe("prependToday", () => {
   test("returns the items untouched when there is no today entry", () => {
     const rest = buildItems([entry("2026-06-09")], "month", 6);
 
-    expect(prependToday(rest, null)).toEqual(rest);
+    expect(prependToday(rest, null, "今天")).toEqual(rest);
   });
 });
 

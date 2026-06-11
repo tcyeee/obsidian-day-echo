@@ -26,17 +26,19 @@ export function buildItems(
 }
 
 /**
- * Put today's entry in its own "今天" section ahead of the grouped flow, so
- * it renders as a regular column card under a dedicated marker. `entries`
- * passed to `buildItems` must already exclude it.
+ * Put today's entry in its own section ahead of the grouped flow, so it
+ * renders as a regular column card under a dedicated marker. `entries` passed
+ * to `buildItems` must already exclude it. The section label is passed in
+ * (already localized) so this data-layer helper stays free of UI concerns.
  */
 export function prependToday(
   items: RenderItem[],
-  today: DiaryEntry | null
+  today: DiaryEntry | null,
+  todayLabel: string
 ): RenderItem[] {
   if (!today) return items;
   return [
-    { kind: "group", key: "today", label: "今天", count: 1 },
+    { kind: "group", key: "today", label: todayLabel, count: 1 },
     { kind: "card", entry: today },
     ...items,
   ];

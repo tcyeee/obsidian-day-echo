@@ -1,0 +1,53 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+
+      - name: Build plugin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            styles.css
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          extra_files=""
+          if [ -s styles.css ]; then
+            extra_files="styles.css"
+          fi
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --draft \
+            main.js manifest.json $extra_files
