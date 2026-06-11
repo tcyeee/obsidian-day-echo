@@ -1,7 +1,30 @@
-import { App, TFile, getAllTags } from "obsidian";
+import { App, TFile, TFolder, getAllTags } from "obsidian";
 import { DiaryEntry } from "../types";
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * All Markdown files within `folder`, collected by walking that folder's
+ * subtree rather than enumerating the whole vault. An empty `folder` means the
+ * vault root. Returns `[]` when the path is missing or isn't a folder.
+ */
+export function markdownFilesIn(app: App, folder: string): TFile[] {
+  const clean = folder.replace(/\/+$/, "");
+  const root = clean
+    ? app.vault.getAbstractFileByPath(clean)
+    : app.vault.getRoot();
+  if (!(root instanceof TFolder)) return [];
+
+  const out: TFile[] = [];
+  const walk = (dir: TFolder): void => {
+    for (const child of dir.children) {
+      if (child instanceof TFolder) walk(child);
+      else if (child instanceof TFile && child.extension === "md") out.push(child);
+    }
+  };
+  walk(root);
+  return out;
+}
 
 // Matches both Obsidian embeds `![[file]]` and markdown images `![alt](url)`.
 const IMG_RE = /!\[\[([^\]]+?)\]\]|!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g;
@@ -14,10 +37,7 @@ const parseCache = new Map<string, { mtime: number; entry: DiaryEntry }>();
 
 /** Scan the daily folder and return parsed entries sorted newest-first. */
 export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[]> {
-  const prefix = folder ? folder.replace(/\/+$/, "") + "/" : "";
-  const files = app.vault
-    .getMarkdownFiles()
-    .filter((f) => !prefix || f.path.startsWith(prefix));
+  const files = markdownFilesIn(app, folder);
 
   const entries: DiaryEntry[] = [];
   const seen = new Set<string>();

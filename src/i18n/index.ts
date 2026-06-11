@@ -1,3 +1,4 @@
+import { getLanguage } from "obsidian";
 import { en, type MessageKey, type Messages } from "./en";
 import { zh } from "./zh";
 
@@ -10,13 +11,12 @@ const CATALOGS: Record<"en" | "zh", Messages> = { en, zh };
 let active: Messages = en;
 
 /**
- * Resolve `auto` to a concrete locale by reading Obsidian's UI language from
- * localStorage (set to a code like "zh" / "zh-TW" / "en"). Anything that
- * isn't Chinese falls back to English.
+ * Resolve `auto` to a concrete locale by reading Obsidian's configured UI
+ * language (an ISO code like "zh" / "zh-TW" / "en"). Anything that isn't
+ * Chinese falls back to English.
  */
 function resolveAuto(): "en" | "zh" {
-  if (typeof window === "undefined") return "en";
-  const lang = window.localStorage.getItem("language") ?? "";
+  const lang = getLanguage() ?? "";
   return lang.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 

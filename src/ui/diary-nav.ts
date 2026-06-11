@@ -1,5 +1,6 @@
 import type { MarkdownView, TFile } from "obsidian";
 import type DayEchoPlugin from "../main";
+import { markdownFilesIn } from "../core/scanner";
 import { t } from "../i18n";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -95,8 +96,9 @@ export class DiaryNav {
 
   /** All date-named Markdown files inside the daily folder. */
   private diaries(): TFile[] {
-    return this.plugin.app.vault
-      .getMarkdownFiles()
-      .filter((f) => this.inDailyFolder(f) && DATE_RE.test(f.basename));
+    return markdownFilesIn(
+      this.plugin.app,
+      this.plugin.settings.dailyFolder
+    ).filter((f) => DATE_RE.test(f.basename));
   }
 }
