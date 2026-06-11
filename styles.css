@@ -97,6 +97,36 @@ body.day-echo-active .status-bar {
   }
 }
 
+/* Back-to-top FAB — floats above the zoom switch, slides in from the right */
+.de-back-to-top {
+  position: absolute;
+  right: 16px;
+  bottom: 100px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 248, 247, 0.9);
+  border: 1px solid var(--de-rose-soft);
+  box-shadow: var(--de-cloud-shadow);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--de-rose);
+  padding: 0;
+}
+
+.de-back-to-top:hover {
+  background: var(--de-rose-soft);
+  box-shadow: none;
+}
+
+.de-back-to-top.is-hidden {
+  display: none;
+}
+
 /* Body: the scrollable timeline */
 .de-body {
   display: flex;
