@@ -1,6 +1,7 @@
 import { Plugin, TAbstractFile } from "obsidian";
 import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./ui/view";
 import { DiaryNav } from "./ui/diary-nav";
+import { registerInteractionBlock } from "./ui/interaction-block";
 import {
   DayEchoSettings,
   DEFAULT_SETTINGS,
@@ -31,6 +32,7 @@ export default class DayEchoPlugin extends Plugin {
     });
 
     this.addSettingTab(new DayEchoSettingTab(this.app, this));
+    registerInteractionBlock(this);
 
     const onChange = (file: TAbstractFile) => this.scheduleRefresh(file.path);
     this.registerEvent(this.app.vault.on("create", onChange));

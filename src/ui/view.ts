@@ -1,6 +1,7 @@
 import {
   ItemView,
   Notice,
+  Scope,
   TFile,
   WorkspaceLeaf,
   setIcon,
@@ -72,6 +73,15 @@ export class DayEchoView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.zoom = plugin.settings.zoom;
+
+    // Obsidian routes Escape through its Keymap/Scope system, not a bubbling
+    // DOM keydown — so a document-level listener can't preempt it. Instead we
+    // give the view its own scope (active while the view is focused) and
+    // swallow Escape there. Returning false stops Obsidian's default handler,
+    // which would otherwise navigate the timeline away. Parenting to app.scope
+    // keeps every other hotkey working.
+    this.scope = new Scope(this.app.scope);
+    this.scope.register([], "Escape", () => false);
   }
 
   getViewType(): string {
@@ -165,7 +175,9 @@ export class DayEchoView extends ItemView {
    * the viewport center).
    */
   private renderZoomSwitch(root: HTMLElement): void {
-    const btt = root.createEl("button", { cls: "de-back-to-top is-hidden" });
+    const wrap = root.createDiv({ cls: "de-zoom-switch" });
+
+    const btt = wrap.createEl("button", { cls: "de-back-to-top is-hidden" });
     setIcon(btt, "chevron-up");
     btt.addEventListener("click", () => {
       if (!this.scrollEl) return;
@@ -174,7 +186,6 @@ export class DayEchoView extends ItemView {
     });
     this.backToTopEl = btt;
 
-    const wrap = root.createDiv({ cls: "de-zoom-switch" });
     wrap.createDiv({ cls: "de-zoom-thumb" });
     for (const level of ZOOM_ORDER) {
       const btn = wrap.createEl("button", {
@@ -197,20 +208,22 @@ export class DayEchoView extends ItemView {
     opts.forEach((opt, i) => opt.toggleClass("is-active", i === idx));
   }
 
-  /** Slide the back-to-top button in (show=true) or out (show=false). */
+  /** Expand (show=true) or collapse (show=false) the back-to-top button inside the pill. */
   private animateBackToTop(show: boolean): void {
     const el = this.backToTopEl;
     if (!el) return;
     const reduced = this.reduceMotion.matches;
     if (show) {
       el.removeClass("is-hidden");
+      this.zoomSwitchEl?.style.setProperty("--de-btt-height", "36px");
       el.animate(
-        { opacity: [0, 1], transform: ["translateX(60px)", "translateX(0)"] },
+        { height: ["0px", "36px"], opacity: [0, 1] },
         { duration: reduced ? 0 : 200, easing: "ease-out" }
       );
     } else {
+      this.zoomSwitchEl?.style.setProperty("--de-btt-height", "0px");
       const anim = el.animate(
-        { opacity: [1, 0], transform: ["translateX(0)", "translateX(60px)"] },
+        { height: ["36px", "0px"], opacity: [1, 0] },
         { duration: reduced ? 0 : 160, easing: "ease-in", fill: "forwards" }
       );
       anim.finished

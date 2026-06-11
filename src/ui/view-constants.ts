@@ -1,6 +1,6 @@
 import type { ZoomLevel } from "../types";
 
-export const PREVIEW_THUMBS = 4;
+export const PREVIEW_THUMBS = 3;
 /** How many entries each year group shows before the rest is folded; the
  * month view shows every entry without folding. */
 export const REPRESENTATIVES = 6;

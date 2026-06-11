@@ -132,7 +132,11 @@ function safeDecode(s: string): string {
   }
 }
 
-/** Strip markup down to readable plain text (uncapped). */
+/**
+ * Strip markup down to readable plain text (uncapped), preserving line breaks
+ * so the timeline preview keeps the note's paragraph structure. Horizontal
+ * whitespace is collapsed and blank lines are flattened to a single break.
+ */
 function toPlainText(body: string): string {
   return body
     .replace(/```[\s\S]*?```/g, " ")
@@ -141,7 +145,9 @@ function toPlainText(body: string): string {
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[\[([^\]]*)\]\]/g, "$1")
     .replace(/[#>*_`~]/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 }
 

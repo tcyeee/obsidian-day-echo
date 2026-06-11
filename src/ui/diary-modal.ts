@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, setIcon } from "obsidian";
+import { App, Component, MarkdownRenderer, Scope, setIcon } from "obsidian";
 import type { DiaryEntry } from "../types";
 import { stripFrontmatter } from "../core/scanner";
 
@@ -46,11 +46,15 @@ export function openDiaryModal(
     if (ev.target === overlay) close();
   });
 
-  // Close on Escape
-  const onKeydown = (ev: KeyboardEvent) => {
-    if (ev.key === "Escape") close();
-  };
-  document.addEventListener("keydown", onKeydown);
+  // Escape closes the modal. Like the timeline view, route this through
+  // Obsidian's Keymap rather than a DOM listener: push a scope so Escape
+  // lands here first, and return false to stop Obsidian's default handler.
+  const scope = new Scope(app.scope);
+  scope.register([], "Escape", () => {
+    close();
+    return false;
+  });
+  app.keymap.pushScope(scope);
 
   // Open animation
   const dur = reduceMotion ? 0 : 220;
@@ -68,8 +72,11 @@ export function openDiaryModal(
     { duration: dur, easing: "ease-out", fill: "forwards" }
   );
 
+  let closed = false;
   function close(): void {
-    document.removeEventListener("keydown", onKeydown);
+    if (closed) return; // Escape, overlay click and the button all route here.
+    closed = true;
+    app.keymap.popScope(scope);
     const closeDur = reduceMotion ? 0 : 180;
     const a = modal.animate(
       [
