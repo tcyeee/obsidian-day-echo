@@ -48,6 +48,9 @@ export class DayEchoView extends ItemView {
   private statsEl: HTMLElement | null = null;
   private listEl: HTMLElement | null = null;
   private zoomSwitchEl: HTMLElement | null = null;
+  private backToTopEl: HTMLElement | null = null;
+  /** Tracks whether the button is currently visible; prevents redundant animations. */
+  private backToTopVisible = false;
   private imgObserver: IntersectionObserver | null = null;
   /** Group markers on the axis, each anchored to its group's first card. */
   private markers: { el: HTMLElement; label: string; cardEl: HTMLElement }[] =
@@ -98,6 +101,8 @@ export class DayEchoView extends ItemView {
     this.statsEl = null;
     this.listEl = null;
     this.zoomSwitchEl = null;
+    this.backToTopEl = null;
+    this.backToTopVisible = false;
     this.stickyLabelEl = null;
     this.stickyLabel = null;
     this.markers = [];
@@ -160,6 +165,15 @@ export class DayEchoView extends ItemView {
    * the viewport center).
    */
   private renderZoomSwitch(root: HTMLElement): void {
+    const btt = root.createEl("button", { cls: "de-back-to-top is-hidden" });
+    setIcon(btt, "chevron-up");
+    btt.addEventListener("click", () => {
+      if (!this.scrollEl) return;
+      this.scrollTarget = 0;
+      this.animateScroll();
+    });
+    this.backToTopEl = btt;
+
     const wrap = root.createDiv({ cls: "de-zoom-switch" });
     wrap.createDiv({ cls: "de-zoom-thumb" });
     for (const level of ZOOM_ORDER) {
@@ -181,6 +195,31 @@ export class DayEchoView extends ItemView {
     const opts =
       this.zoomSwitchEl.querySelectorAll<HTMLElement>(".de-zoom-opt");
     opts.forEach((opt, i) => opt.toggleClass("is-active", i === idx));
+  }
+
+  /** Slide the back-to-top button in (show=true) or out (show=false). */
+  private animateBackToTop(show: boolean): void {
+    const el = this.backToTopEl;
+    if (!el) return;
+    const reduced = this.reduceMotion.matches;
+    if (show) {
+      el.removeClass("is-hidden");
+      el.animate(
+        { opacity: [0, 1], transform: ["translateX(60px)", "translateX(0)"] },
+        { duration: reduced ? 0 : 200, easing: "ease-out" }
+      );
+    } else {
+      const anim = el.animate(
+        { opacity: [1, 0], transform: ["translateX(0)", "translateX(60px)"] },
+        { duration: reduced ? 0 : 160, easing: "ease-in", fill: "forwards" }
+      );
+      anim.finished
+        .then(() => {
+          el.addClass("is-hidden");
+          anim.cancel();
+        })
+        .catch(() => {});
+    }
   }
 
   /** Lazy-load thumbnails as they scroll into the timeline viewport. */
