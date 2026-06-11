@@ -120,7 +120,7 @@ body.day-echo-active .status-bar {
 /* Breathing room above "today" when scrolled to the very top. Sits outside
    .de-inner so the axis line starts at the today dot, not in the blank. */
 .de-top-spacer {
-  height: 38vh;
+  height: 32vh;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -129,7 +129,7 @@ body.day-echo-active .status-bar {
 /* Vault stats resting in the blank above "today" */
 .de-stats {
   width: min(1000px, 100%);
-  padding: 0 0 34px 75px;
+  padding: 0 0 34px 130px;
   font-size: var(--font-ui-small);
   color: var(--de-muted);
 }
@@ -137,7 +137,7 @@ body.day-echo-active .status-bar {
 .de-stats-title {
   margin-bottom: 6px;
   color: var(--de-rose);
-  font-size: clamp(35px, 5.5vw, 60px);
+  font-size: clamp(32px, 5vw, 54px);
   line-height: 1.05;
   font-weight: 800;
   letter-spacing: 0;
@@ -146,7 +146,7 @@ body.day-echo-active .status-bar {
 .de-stats-subtitle {
   margin-bottom: 14px;
   color: var(--de-muted);
-  font-size: calc(var(--font-ui-large) * 1.1);
+  font-size: var(--font-ui-large);
   line-height: 1.45;
 }
 
