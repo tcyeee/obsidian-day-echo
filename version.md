@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Renamed the "Open Day Echo timeline" command to "Open timeline", since Obsidian already shows the plugin name alongside it. 将命令"Open Day Echo timeline"重命名为"Open timeline"，因为 Obsidian 已在旁边显示插件名。
+- Raised the minimum required Obsidian version to 1.7.2 and fixed the warnings reported by the plugin review checks. 将所需的最低 Obsidian 版本提升至 1.7.2，并修复插件审核检查报告的告警。
+
 ## 0.1.0
 
 - Added a vertical timeline view that gathers all daily notes from your diary folder, with a year-marked axis and chronologically ordered cards. 新增竖向时间轴视图，将日记文件夹内的所有日记按时间汇聚到一个页面，左侧轴线以年份为节点排列卡片。
