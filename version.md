@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Read the app language through Obsidian's official getLanguage() API instead of localStorage, raising the minimum required version to 1.8.7. 改用 Obsidian 官方的 getLanguage() API 读取界面语言，不再访问 localStorage，并将所需最低版本提升至 1.8.7。
+- Scanned diaries only within the configured diary folder instead of enumerating the whole vault, which is also faster on large vaults. 仅在配置的日记文件夹内扫描日记，不再遍历整个仓库，在大型仓库上也更快。
+
 ## 0.1.2
 
 - Fixed the settings panel so switching language refreshes it without invoking Obsidian's deprecated display() method. 修复设置面板，切换语言时不再调用 Obsidian 已弃用的 display() 方法来刷新。
