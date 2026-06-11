@@ -215,6 +215,7 @@ export class DayEchoView extends ItemView {
       );
       anim.finished
         .then(() => {
+          if (this.backToTopVisible) return;
           el.addClass("is-hidden");
           anim.cancel();
         })
@@ -598,6 +599,12 @@ export class DayEchoView extends ItemView {
    */
   private updateSticky(): void {
     if (!this.stickyLabelEl || !this.scrollEl) return;
+    // Show back-to-top once the user has scrolled past one full viewport height.
+    const shouldShow = this.scrollEl.scrollTop > this.scrollEl.clientHeight;
+    if (shouldShow !== this.backToTopVisible) {
+      this.backToTopVisible = shouldShow;
+      this.animateBackToTop(shouldShow);
+    }
     const y = this.scrollEl.scrollTop - this.listOffsetTop;
     let label: string | null = null;
     for (let i = 0; i < this.markerTops.length; i++) {
@@ -608,13 +615,6 @@ export class DayEchoView extends ItemView {
     this.stickyLabel = label;
     this.stickyLabelEl.parentElement?.toggleClass("is-hidden", label === null);
     if (label !== null) this.stickyLabelEl.setText(label);
-
-    // Show back-to-top once the user has scrolled past one full viewport height.
-    const shouldShow = this.scrollEl.scrollTop > this.scrollEl.clientHeight;
-    if (shouldShow !== this.backToTopVisible) {
-      this.backToTopVisible = shouldShow;
-      this.animateBackToTop(shouldShow);
-    }
   }
 
   /** Today's entry, if a diary for the current date exists. */
