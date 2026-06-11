@@ -1,7 +1,7 @@
 {
   "id": "day-echo",
   "name": "Day Echo",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.7.2",
   "description": "Gather all your daily notes into one vertical timeline view.",
   "author": "tcyeee",

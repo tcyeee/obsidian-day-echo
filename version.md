@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Fixed the settings panel so switching language refreshes it without invoking Obsidian's deprecated display() method. 修复设置面板，切换语言时不再调用 Obsidian 已弃用的 display() 方法来刷新。
+
 ## 0.1.1
 
 - Renamed the "Open Day Echo timeline" command to "Open timeline", since Obsidian already shows the plugin name alongside it. 将命令"Open Day Echo timeline"重命名为"Open timeline"，因为 Obsidian 已在旁边显示插件名。
