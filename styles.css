@@ -5,6 +5,24 @@
   flex-direction: column;
   /* Anchor for the floating zoom switch */
   position: relative;
+  --de-cream: #fffdf5;
+  --de-surface: #fff8f7;
+  --de-card-bg: #ffffff;
+  --de-rose: #874f4c;
+  --de-rose-soft: #ffdad7;
+  --de-rose-line: #d7c2c0;
+  --de-blue: #356572;
+  --de-blue-soft: #baeafa;
+  --de-lavender: #fcd7ff;
+  --de-lavender-text: #674a6d;
+  --de-ink: #201a1a;
+  --de-muted: #665655;
+  --de-cloud-shadow: 0 10px 28px rgba(135, 79, 76, 0.09);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 218, 215, 0.45), transparent 24%),
+    radial-gradient(circle at 88% 16%, rgba(186, 234, 250, 0.32), transparent 22%),
+    linear-gradient(180deg, var(--de-cream), var(--de-surface));
+  color: var(--de-ink);
 }
 
 /* Hide the global status bar while the timeline view is active */
@@ -21,9 +39,10 @@ body.day-echo-active .status-bar {
   display: flex;
   padding: 4px;
   border-radius: 999px;
-  background: var(--background-modifier-hover);
-  border: 1px solid var(--background-modifier-border);
-  box-shadow: var(--shadow-s);
+  background: rgba(255, 248, 247, 0.9);
+  border: 1px solid var(--de-rose-soft);
+  box-shadow: var(--de-cloud-shadow);
+  backdrop-filter: blur(10px);
 }
 
 /* Scoped under .de-zoom-switch to outrank Obsidian's button:not(.clickable-icon) */
@@ -37,7 +56,7 @@ body.day-echo-active .status-bar {
   border-radius: 999px;
   background: transparent;
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--de-muted);
   font-size: var(--font-ui-medium);
   line-height: 36px;
   cursor: pointer;
@@ -47,12 +66,12 @@ body.day-echo-active .status-bar {
 .de-zoom-switch .de-zoom-opt:hover {
   background: transparent;
   box-shadow: none;
-  color: var(--text-normal);
+  color: var(--de-rose);
 }
 
 .de-zoom-switch .de-zoom-opt.is-active,
 .de-zoom-switch .de-zoom-opt.is-active:hover {
-  color: var(--text-normal);
+  color: var(--de-rose);
   font-weight: 600;
 }
 
@@ -64,9 +83,9 @@ body.day-echo-active .status-bar {
   width: 66px;
   height: 36px;
   border-radius: 999px;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  box-shadow: var(--shadow-s);
+  background: var(--de-rose-soft);
+  border: 1px solid rgba(135, 79, 76, 0.12);
+  box-shadow: 0 5px 14px rgba(135, 79, 76, 0.12);
   transform: translateX(calc(var(--de-zoom-index, 0) * 100%));
   transition: transform 160ms ease;
 }
@@ -87,13 +106,59 @@ body.day-echo-active .status-bar {
 .de-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px 80px;
+  padding: 20px 24px 84px;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 40px,
+    black calc(100% - 40px),
+    transparent 100%
+  );
 }
 
 /* Breathing room above "today" when scrolled to the very top. Sits outside
    .de-inner so the axis line starts at the today dot, not in the blank. */
 .de-top-spacer {
-  height: 30vh;
+  height: 32vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Vault stats resting in the blank above "today" */
+.de-stats {
+  width: min(1000px, 100%);
+  padding: 0 0 34px 130px;
+  font-size: var(--font-ui-small);
+  color: var(--de-muted);
+}
+
+.de-stats-title {
+  margin-bottom: 6px;
+  color: var(--de-rose);
+  font-size: clamp(32px, 5vw, 54px);
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.de-stats-subtitle {
+  margin-bottom: 14px;
+  color: var(--de-muted);
+  font-size: var(--font-ui-large);
+  line-height: 1.45;
+}
+
+.de-stats-num {
+  font-size: 1.7em;
+  font-weight: 700;
+  color: var(--de-rose);
+  margin-right: 4px;
+}
+
+.de-stats-count-label {
+  color: var(--de-muted);
+  letter-spacing: 0.08em;
 }
 
 .de-top-spacer.de-hidden {
@@ -116,7 +181,8 @@ body.day-echo-active .status-bar {
   /* label column (100) + half dot (6) - half line (1) */
   left: 105px;
   width: 2px;
-  background: var(--background-modifier-border);
+  background-image: linear-gradient(to bottom, var(--de-rose-line) 50%, transparent 50%);
+  background-size: 2px 18px;
 }
 
 /* Section block, now only used by the "today" hero at the timeline top */
@@ -142,8 +208,9 @@ body.day-echo-active .status-bar {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--interactive-accent);
-  border: 2px solid var(--background-primary);
+  background: var(--de-rose);
+  border: 3px solid var(--de-surface);
+  box-shadow: 0 3px 10px rgba(135, 79, 76, 0.16);
 }
 
 /* Head of the today section; group markers carry their own label now */
@@ -166,7 +233,9 @@ body.day-echo-active .status-bar {
 }
 
 .de-sticky .de-sec-label {
-  background: var(--background-primary);
+  background: color-mix(in srgb, var(--de-surface) 90%, transparent);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
 }
 
 .de-sec-label {
@@ -174,17 +243,18 @@ body.day-echo-active .status-bar {
   padding: 2px 12px 2px 0;
   text-align: right;
   font-weight: 700;
+  letter-spacing: 0;
 }
 
 /* The label grows and shifts color with the zoom level: month < year. */
 .de-zoom-month .de-sec-label {
   font-size: 1.5em;
-  color: var(--text-accent);
+  color: var(--de-rose);
 }
 
 .de-zoom-year .de-sec-label {
   font-size: 1.9em;
-  color: var(--interactive-accent);
+  color: var(--de-rose);
 }
 
 /* Entry count shown under the month/year label in aggregated views */
@@ -193,7 +263,8 @@ body.day-echo-active .status-bar {
   padding-right: 12px;
   text-align: right;
   font-size: var(--font-ui-smaller);
-  color: var(--text-faint);
+  color: var(--de-muted);
+  opacity: 0.72;
 }
 
 /* ===== "Today" block pinned at the top of the timeline ===== */
@@ -204,15 +275,15 @@ body.day-echo-active .status-bar {
 
 /* The today dot glows so the timeline visibly starts here */
 .de-today-dot {
-  background: var(--interactive-accent);
+  background: var(--de-rose);
   box-shadow: 0 0 8px
-    color-mix(in srgb, var(--interactive-accent) 70%, transparent);
+    color-mix(in srgb, var(--de-rose) 70%, transparent);
 }
 
 .de-zoom-month .de-today-label,
 .de-zoom-year .de-today-label {
   font-size: 1.5em;
-  color: var(--interactive-accent);
+  color: var(--de-rose);
 }
 
 /* Single full-width card aligned with the regular card columns */
@@ -224,18 +295,15 @@ body.day-echo-active .status-bar {
 
 /* Brighter than regular cards: accent-tinted background and a soft glow */
 .de-card.de-today-card {
-  border-color: color-mix(in srgb, var(--interactive-accent) 60%, transparent);
-  background: color-mix(
-    in srgb,
-    var(--interactive-accent) 7%,
-    var(--background-primary)
-  );
-  box-shadow: 0 0 18px
-    color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+  border-color: var(--de-rose-soft);
+  background:
+    linear-gradient(135deg, rgba(255, 218, 215, 0.62), rgba(255, 255, 255, 0.92)),
+    var(--de-card-bg);
+  box-shadow: 0 12px 30px rgba(135, 79, 76, 0.12);
 }
 
 .de-card.de-today-card:hover {
-  border-color: var(--interactive-accent);
+  border-color: var(--de-rose);
 }
 
 /* Empty state: a blank card inviting the first words of the day */
@@ -245,12 +313,12 @@ body.day-echo-active .status-bar {
   justify-content: center;
   gap: 8px;
   min-height: 110px;
-  color: var(--text-muted);
+  color: var(--de-muted);
   font-size: var(--font-ui-medium);
 }
 
 .de-today-empty:hover {
-  color: var(--interactive-accent);
+  color: var(--de-rose);
 }
 
 .de-today-plus {
@@ -267,7 +335,7 @@ body.day-echo-active .status-bar {
 .de-flow {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 28px;
   /* label column (100) + dot (12) + gutter (18) */
   margin-left: 130px;
 }
@@ -277,85 +345,143 @@ body.day-echo-active .status-bar {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px;
 }
 
-/* content-visibility lets the browser skip layout and paint for cards
-   outside the viewport; the intrinsic-size estimate keeps the scrollbar
-   stable. */
 .de-card {
   position: relative;
   min-width: 0;
-  padding: 12px 16px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  background: var(--background-primary);
+  padding: 22px 24px 24px;
+  border: 2px solid var(--de-rose-soft);
+  border-radius: 24px;
+  background: var(--de-card-bg);
+  box-shadow: var(--de-cloud-shadow);
   cursor: pointer;
-  transition: border-color 0.15s ease;
-  content-visibility: auto;
-  contain-intrinsic-size: 0 160px;
+  transition: border-color 0.15s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  /* contain: layout style paint isolates each card's layout so expanding one
+     card does not force a full-page reflow, without the synchronous
+     viewport-entry layout work that content-visibility: auto imposes on every
+     programmatic scrollTop write. */
+  contain: layout style paint;
 }
 
-/* Flow cards never get shorter than half their width; taller content still
-   stretches them (aspect-ratio yields to the content-based minimum size).
-   Scoped to the columns so the full-width today card keeps its own height. */
-.de-col > .de-card {
-  aspect-ratio: 2 / 1;
+.de-card::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: -49px;
+  width: 22px;
+  height: 22px;
+  border: 4px solid var(--de-surface);
+  border-radius: 50%;
+  background: var(--de-blue-soft);
+  box-shadow: 0 4px 12px rgba(53, 101, 114, 0.15);
 }
+
 
 .de-card:hover {
-  border-color: var(--interactive-accent);
+  border-color: var(--de-rose);
+  box-shadow: 0 14px 34px rgba(135, 79, 76, 0.13);
+  transform: translateY(-2px);
 }
 
 .de-card-date {
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
-  margin-bottom: 6px;
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--de-rose-soft);
+  font-size: var(--font-ui-smaller);
+  font-weight: 700;
+  color: var(--de-rose);
+  margin-bottom: 12px;
   cursor: pointer;
+  letter-spacing: 0.06em;
 }
 
 .de-card-date:hover {
-  color: var(--interactive-accent);
+  color: var(--de-ink);
 }
 
-/* "+N more" fold: a real preview card dimmed by a gradient overlay */
+/* Fold card: a real preview card with a centered expand affordance. */
 .de-fold-mask {
   position: absolute;
   inset: 0;
   z-index: 2;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  border-radius: 8px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--background-primary) 40%, transparent),
-    color-mix(in srgb, var(--background-primary) 92%, transparent)
-  );
-  color: var(--text-muted);
+  border-radius: 24px;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--de-card-bg) 54%, transparent),
+      color-mix(in srgb, var(--de-card-bg) 92%, transparent)
+    ),
+    rgba(255, 248, 247, 0.72);
   cursor: pointer;
+  backdrop-filter: blur(2px);
 }
 
-.de-fold-mask:hover {
-  color: var(--interactive-accent);
+.de-fold-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 48px);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--de-rose) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--de-card-bg) 88%, transparent);
+  color: var(--de-rose);
+  box-shadow: 0 8px 22px rgba(135, 79, 76, 0.13);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.de-fold-mask:hover .de-fold-action {
+  border-color: var(--de-rose);
+  box-shadow: 0 12px 28px rgba(135, 79, 76, 0.18);
+  transform: translateY(-1px);
+}
+
+.de-fold-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--de-rose-soft);
+  color: var(--de-rose);
 }
 
 .de-fold-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+}
+
+.de-fold-copy {
+  min-width: 0;
+}
+
+.de-fold-title {
+  color: var(--de-ink);
+  font-size: var(--font-ui-small);
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .de-fold-count {
-  font-size: var(--font-ui-small);
+  color: var(--de-muted);
+  font-size: var(--font-ui-smaller);
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .de-text {
   font-size: var(--font-ui-medium);
   line-height: 1.6;
-  color: var(--text-normal);
+  color: var(--de-muted);
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -364,29 +490,42 @@ body.day-echo-active .status-bar {
 
 .de-thumbs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  flex-wrap: nowrap;
+  margin-top: 16px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  min-height: 112px;
+  padding-left: 2px;
+  overflow: visible;
+}
+
+.de-polaroid {
+  display: inline-block;
+  position: relative;
+  flex: 0 0 auto;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(132, 115, 114, 0.16);
+  box-shadow: 0 5px 12px rgba(32, 26, 26, 0.08);
+  transform: rotate(-2deg);
+  z-index: calc(4 - var(--de-thumb-index, 0));
+}
+
+.de-polaroid + .de-polaroid {
+  margin-left: -58px;
+}
+
+.de-polaroid:nth-child(even) {
+  transform: rotate(2deg);
 }
 
 .de-thumb {
-  width: 96px;
-  height: 72px;
+  display: block;
+  width: 132px;
+  height: 96px;
   object-fit: cover;
-  border-radius: 4px;
-  background: var(--background-secondary);
-}
-
-.de-more {
-  width: 96px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  background: var(--background-secondary);
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  border-radius: 3px;
+  background: #f7ebea;
 }
 
 .de-tags {
@@ -398,41 +537,139 @@ body.day-echo-active .status-bar {
 
 .de-tag {
   font-size: var(--font-ui-small);
-  color: var(--text-accent);
-  background: var(--background-secondary);
-  padding: 2px 10px;
-  border-radius: 12px;
+  color: var(--de-blue);
+  background: var(--de-blue-soft);
+  padding: 3px 11px;
+  border-radius: 999px;
 }
 
-/* Expanded full content */
-.de-full {
-  display: none;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--background-modifier-border);
+/* ===== Diary card modal ===== */
+
+.de-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(32, 26, 26, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
-.de-card.is-expanded {
-  cursor: default;
+.de-modal {
+  position: relative;
+  width: min(680px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 2px solid #ffdad7;
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(135, 79, 76, 0.18);
 }
 
-.de-card.is-expanded .de-preview {
-  display: none;
+.de-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ffdad7;
+  border-radius: 26px 26px 0 0;
 }
 
-.de-card.is-expanded .de-full {
-  display: block;
+.de-modal-date {
+  display: inline-flex;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ffdad7;
+  font-size: var(--font-ui-smaller);
+  font-weight: 700;
+  color: #874f4c;
+  letter-spacing: 0.06em;
+  cursor: pointer;
 }
 
-.de-full img {
+.de-modal-date:hover {
+  color: #201a1a;
+}
+
+.de-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #665655;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.de-modal-close:hover {
+  background: #ffdad7;
+  color: #874f4c;
+}
+
+.de-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.de-modal-body {
+  padding: 20px 28px 32px;
+}
+
+.de-modal-body img {
   max-width: 100%;
-  border-radius: 4px;
+  border-radius: 10px;
 }
 
 .de-empty {
-  color: var(--text-muted);
+  color: var(--de-muted);
   text-align: center;
   padding: 40px 0;
+}
+
+@media (max-width: 760px) {
+  .de-scroll {
+    padding: 16px 14px 84px;
+  }
+
+  .de-stats {
+    padding-left: 0;
+    text-align: center;
+  }
+
+  .de-inner::before,
+  .de-marker,
+  .de-card::before {
+    display: none;
+  }
+
+  .de-flow,
+  .de-today-wrap {
+    margin-left: 0;
+  }
+
+  .de-flow {
+    flex-direction: column;
+  }
+
+  .de-col {
+    width: 100%;
+  }
+
+  .de-col > .de-card {
+    aspect-ratio: auto;
+  }
+
+  .de-card {
+    border-radius: 18px;
+  }
 }
 
 /* ===== Diary prev/next navigation ===== */
@@ -485,4 +722,100 @@ body.day-echo-active .status-bar {
   background: var(--interactive-accent);
   border-color: var(--interactive-accent);
   text-decoration: none;
+}
+
+/* ── echo-interaction code block ───────────────────────── */
+
+.ei-block {
+  padding: 16px 20px;
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ei-date {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ei-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ei-label {
+  width: 2.5em;
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  flex-shrink: 0;
+}
+
+.ei-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.ei-dot {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 50%;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-medium);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ei-dot:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  box-shadow: none;
+  background: var(--background-primary);
+}
+
+.ei-dot.is-filled {
+  border-color: var(--interactive-accent-hover);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.ei-dot.is-selected {
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.ei-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ei-save {
+  flex-shrink: 0;
+}
+
+.ei-status {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.ei-status--ok {
+  color: var(--color-green);
+}
+
+.ei-status--warn {
+  color: var(--color-red);
 }

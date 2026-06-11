@@ -1,7 +1,7 @@
-import { App, Component, MarkdownRenderer, setIcon } from "obsidian";
+import { App, Component, setIcon } from "obsidian";
 import type { DiaryEntry } from "../types";
-import { stripFrontmatter } from "../core/scanner";
 import { PREVIEW_THUMBS } from "./view-constants";
+import { openDiaryModal } from "./diary-modal";
 
 /**
  * Dependencies injected by DayEchoView when building cards, so card-builder
@@ -12,7 +12,6 @@ export interface CardContext {
   /** The Obsidian Component used as owner for MarkdownRenderer.render. */
   component: Component;
   imgObserver: IntersectionObserver | null;
-  expanded: Set<string>;
   unfolded: Set<string>;
   /** Called when the user clicks a fold card's overlay to expand the group. */
   onUnfold: () => void;
@@ -38,16 +37,17 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
   }
   if (entry.images.length) {
     const thumbs = preview.createDiv({ cls: "de-thumbs" });
-    for (const src of entry.images.slice(0, PREVIEW_THUMBS)) {
-      const img = thumbs.createEl("img", { cls: "de-thumb" });
+    const previewImages = entry.images.slice(0, PREVIEW_THUMBS);
+    for (const [idx, src] of previewImages.entries()) {
+      const frame = thumbs.createDiv({ cls: "de-polaroid" });
+      frame.style.setProperty("--de-thumb-index", String(idx));
+      const img = frame.createEl("img", { cls: "de-thumb" });
       // Thumbs show full-size vault images; decode them off the critical
       // path so a large photo cannot stall scrolling when it loads.
       img.decoding = "async";
       img.dataset.src = src;
       ctx.imgObserver?.observe(img);
     }
-    const extra = entry.images.length - PREVIEW_THUMBS;
-    if (extra > 0) thumbs.createDiv({ cls: "de-more", text: `+${extra}` });
   }
   if (entry.tags.length) {
     const tagWrap = preview.createDiv({ cls: "de-tags" });
@@ -56,40 +56,16 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
     }
   }
 
-  const path = entry.file.path;
-  let fullEl: HTMLElement | null = null;
-  const setExpanded = async (want: boolean): Promise<void> => {
-    if (want) {
-      if (!fullEl) {
-        fullEl = card.createDiv({ cls: "de-full" });
-        const content = await ctx.app.vault.cachedRead(entry.file);
-        await MarkdownRenderer.render(
-          ctx.app,
-          stripFrontmatter(content),
-          fullEl,
-          path,
-          ctx.component
-        );
-      }
-      card.addClass("is-expanded");
-      ctx.expanded.add(path);
-    } else {
-      card.removeClass("is-expanded");
-      ctx.expanded.delete(path);
-    }
-  };
   card.addEventListener("click", (ev) => {
     if ((ev.target as HTMLElement).closest("a")) return;
-    void setExpanded(!card.hasClass("is-expanded"));
+    openDiaryModal(entry, ctx.app, ctx.component);
   });
-
-  if (ctx.expanded.has(path)) void setExpanded(true);
 
   return card;
 }
 
 /**
- * The "+N more" placeholder: a real preview card of the first hidden entry,
+ * The "show more" placeholder: a real preview card of the first hidden entry,
  * dimmed by an overlay. Clicking marks the group unfolded and calls onUnfold.
  */
 export function buildFoldCard(
@@ -101,9 +77,12 @@ export function buildFoldCard(
   card.addClass("de-fold-card");
 
   const mask = card.createDiv({ cls: "de-fold-mask" });
-  const icon = mask.createDiv({ cls: "de-fold-icon" });
+  const action = mask.createDiv({ cls: "de-fold-action" });
+  const icon = action.createDiv({ cls: "de-fold-icon" });
   setIcon(icon, "chevrons-down");
-  mask.createDiv({ cls: "de-fold-count", text: `+${hidden.length}` });
+  const copy = action.createDiv({ cls: "de-fold-copy" });
+  copy.createDiv({ cls: "de-fold-title", text: "显示更多" });
+  copy.createDiv({ cls: "de-fold-count", text: `${hidden.length} 篇日记` });
 
   mask.addEventListener("click", (ev) => {
     ev.stopPropagation();
@@ -115,9 +94,10 @@ export function buildFoldCard(
 
 /**
  * Estimate a collapsed card's rendered height in px, for column balancing.
- * Collapsed cards are predictable: fixed 96x72 thumbs, text clamped to four
- * lines, one tag row. Estimates only steer placement, so being a few pixels
- * off merely leaves the two column bottoms slightly uneven.
+ * Collapsed cards are predictable: one overlapped thumbnail row, text clamped
+ * to four lines, one tag row. Estimates only steer placement and
+ * content-visibility placeholders, so being a few pixels off merely leaves the
+ * two column bottoms slightly uneven.
  */
 export function estimateHeight(entry: DiaryEntry): number {
   let h = 26 + 26 + 16; // padding+border, date line, run gap
@@ -126,10 +106,7 @@ export function estimateHeight(entry: DiaryEntry): number {
     h += Math.min(4, Math.ceil(entry.previewText.length / 50)) * 26;
   }
   if (entry.images.length) {
-    const cells =
-      Math.min(entry.images.length, PREVIEW_THUMBS) +
-      (entry.images.length > PREVIEW_THUMBS ? 1 : 0);
-    h += Math.ceil(cells / 3) * 80 + 10; // ~3 thumbs per column row
+    h += 112; // one horizontal overlapped row of polaroids
   }
   if (entry.tags.length) h += 34;
   return Math.max(h, 140);

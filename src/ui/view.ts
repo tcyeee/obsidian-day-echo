@@ -24,7 +24,7 @@ import {
   REPRESENTATIVES,
   type ZoomAnchor,
 } from "./view-constants";
-import { buildCard, buildFoldCard, estimateHeight, CardContext } from "./card-builder";
+import { buildCard, buildFoldCard, estimateHeight, type CardContext } from "./card-builder";
 
 export const VIEW_TYPE_DAY_ECHO = "day-echo-timeline";
 
@@ -32,8 +32,6 @@ export class DayEchoView extends ItemView {
   private plugin: DayEchoPlugin;
   private entries: DiaryEntry[] = [];
   private zoom: ZoomLevel;
-  /** File paths of cards the user has expanded, preserved across refreshes. */
-  private expanded = new Set<string>();
   /** Group keys whose "+N" fold the user has opened, preserved likewise. */
   private unfolded = new Set<string>();
   private wheelAccum = 0;
@@ -459,7 +457,6 @@ export class DayEchoView extends ItemView {
       app: this.app,
       component: this,
       imgObserver: this.imgObserver,
-      expanded: this.expanded,
       unfolded: this.unfolded,
       onUnfold: () => this.renderTimeline(),
     };
@@ -519,11 +516,16 @@ export class DayEchoView extends ItemView {
   private updateStats(): void {
     if (!this.statsEl) return;
     this.statsEl.empty();
+    this.statsEl.createDiv({ cls: "de-stats-title", text: "My Journey" });
+    this.statsEl.createDiv({
+      cls: "de-stats-subtitle",
+      text: "Every sprinkle of joy recorded forever.",
+    });
     this.statsEl.createSpan({
       cls: "de-stats-num",
       text: String(this.entries.length),
     });
-    this.statsEl.createSpan({ text: "篇日记" });
+    this.statsEl.createSpan({ cls: "de-stats-count-label", text: "篇日记" });
   }
 
   /** Pin each group marker level with its first card, pushed apart on overlap. */
