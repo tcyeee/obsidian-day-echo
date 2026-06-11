@@ -141,6 +141,13 @@ body.day-echo-active .status-bar {
   overflow-y: auto;
   padding: 20px 24px 84px;
   transform-origin: 50% var(--de-zoom-origin-y, 50%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    black 40px,
+    black calc(100% - 40px),
+    transparent 100%
+  );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,

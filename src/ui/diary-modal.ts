@@ -21,7 +21,7 @@ export function openDiaryModal(
   });
   dateBadge.title = t("card.openNote");
   dateBadge.addEventListener("click", () => {
-    app.workspace.getLeaf(false).openFile(entry.file);
+    void app.workspace.getLeaf(false).openFile(entry.file);
     close();
   });
 

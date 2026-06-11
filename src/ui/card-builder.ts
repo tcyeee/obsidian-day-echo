@@ -28,7 +28,7 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
   label.setAttr("title", t("card.openNote"));
   label.addEventListener("click", (ev) => {
     ev.stopPropagation();
-    ctx.app.workspace.getLeaf(false).openFile(entry.file);
+    void ctx.app.workspace.getLeaf(false).openFile(entry.file);
   });
 
   const preview = card.createDiv({ cls: "de-preview" });

@@ -49,6 +49,7 @@ export class DayEchoSettingTab extends PluginSettingTab {
             this.plugin.settings.language = value as LanguageSetting;
             await this.plugin.saveSettings();
             this.plugin.refreshLanguage();
+            // eslint-disable-next-line @typescript-eslint/no-deprecated -- PluginSettingTab.display() deprecated in 1.13.0; migrate to getSettingDefinitions() when refactoring settings
             this.display();
           })
       );

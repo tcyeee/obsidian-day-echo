@@ -685,14 +685,17 @@ export class DayEchoView extends ItemView {
     // Vault API never sees an un-normalized, user-defined path.
     const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
     try {
-      let file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof TFile)) {
+      const existing = this.app.vault.getAbstractFileByPath(path);
+      let file: TFile;
+      if (existing instanceof TFile) {
+        file = existing;
+      } else {
         if (folder && !this.app.vault.getAbstractFileByPath(folder)) {
           await this.app.vault.createFolder(folder);
         }
         file = await this.app.vault.create(path, "");
       }
-      await this.app.workspace.getLeaf(false).openFile(file as TFile);
+      await this.app.workspace.getLeaf(false).openFile(file);
     } catch (err) {
       new Notice(t("view.createFailed", { error: String(err) }));
     }

@@ -29,7 +29,7 @@ export default class DayEchoPlugin extends Plugin {
 
     this.addCommand({
       id: "open-timeline",
-      name: "Open Day Echo timeline",
+      name: "Open timeline",
       callback: () => this.activateView(),
     });
 
@@ -110,7 +110,7 @@ export default class DayEchoPlugin extends Plugin {
       leaf = workspace.getLeaf(true);
       await leaf.setViewState({ type: VIEW_TYPE_DAY_ECHO, active: true });
     }
-    workspace.revealLeaf(leaf);
+    await workspace.revealLeaf(leaf);
   }
 
   async loadSettings(): Promise<void> {

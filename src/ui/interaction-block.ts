@@ -53,19 +53,22 @@ async function renderBlock(
   });
   const status = footer.createDiv({ cls: "ei-status" });
 
-  saveBtn.addEventListener("click", async () => {
+  saveBtn.addEventListener("click", () => {
     if (energy === null || mood === null) {
       setStatus(status, t("interaction.rateFirst"), false);
       return;
     }
-    try {
-      await writeScores(plugin, filePath, { energy, mood });
-      setStatus(status, t("interaction.saved"), true);
-    } catch (err) {
-      const msg = t("interaction.saveFailed", { error: String(err) });
-      setStatus(status, msg, false);
-      new Notice(msg);
-    }
+    const scores = { energy, mood };
+    void (async () => {
+      try {
+        await writeScores(plugin, filePath, scores);
+        setStatus(status, t("interaction.saved"), true);
+      } catch (err) {
+        const msg = t("interaction.saveFailed", { error: String(err) });
+        setStatus(status, msg, false);
+        new Notice(msg);
+      }
+    })();
   });
 }
 
@@ -159,7 +162,7 @@ function parseConfig(source: string): BlockConfig {
   const trimmed = source.trim();
   if (!trimmed) return {};
   try {
-    const parsed = parseYaml(trimmed);
+    const parsed: unknown = parseYaml(trimmed);
     if (parsed && typeof parsed === "object") return parsed as BlockConfig;
   } catch {
     // ignore, use defaults
