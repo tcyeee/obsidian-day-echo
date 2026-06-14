@@ -12,6 +12,10 @@ export interface DayEchoSettings {
   zoom: ZoomLevel;
   /** Show the prev/next bar on top of open daily notes. */
   showDiaryNav: boolean;
+  /** Show today's card in echo-interaction blocks without an explicit date. */
+  interactionToday: boolean;
+  /** Show yesterday's card in echo-interaction blocks without an explicit date. */
+  interactionYesterday: boolean;
   /** UI language; `auto` follows Obsidian's interface language. */
   language: LanguageSetting;
 }
@@ -21,6 +25,8 @@ export const DEFAULT_SETTINGS: DayEchoSettings = {
   sortAscending: false,
   zoom: "month",
   showDiaryNav: true,
+  interactionToday: true,
+  interactionYesterday: true,
   language: "auto",
 };
 
@@ -93,6 +99,30 @@ export class DayEchoSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
             if (value) this.plugin.diaryNav.refresh();
             else this.plugin.diaryNav.detachAll();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName(t("settings.interactionToday.name"))
+      .setDesc(t("settings.interactionToday.desc"))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.interactionToday)
+          .onChange(async (value) => {
+            this.plugin.settings.interactionToday = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName(t("settings.interactionYesterday.name"))
+      .setDesc(t("settings.interactionYesterday.desc"))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.interactionYesterday)
+          .onChange(async (value) => {
+            this.plugin.settings.interactionYesterday = value;
+            await this.plugin.saveSettings();
           })
       );
   }
