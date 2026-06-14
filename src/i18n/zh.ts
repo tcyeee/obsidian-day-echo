@@ -13,6 +13,12 @@ export const zh: Messages = {
   "settings.language.name": "语言",
   "settings.language.desc": "Day Echo 的显示语言。“自动”跟随 Obsidian 的界面语言。",
   "settings.language.auto": "自动",
+  "settings.interactionToday.name": "显示今天的卡片",
+  "settings.interactionToday.desc":
+    "在未指定日期的 echo-interaction 卡片中显示“今天”的评分卡。",
+  "settings.interactionYesterday.name": "显示昨天的卡片",
+  "settings.interactionYesterday.desc":
+    "在未指定日期的 echo-interaction 卡片中显示“昨天”的评分卡。",
 
   // Timeline view
   "view.empty": "暂无日记。",
@@ -45,4 +51,5 @@ export const zh: Messages = {
   "interaction.saved": "已保存 ✓",
   "interaction.saveFailed": "保存失败: {error}",
   "interaction.insertMenu": "插入互动卡片",
+  "interaction.openSettings": "Day Echo 设置",
 };

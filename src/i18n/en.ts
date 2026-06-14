@@ -17,6 +17,12 @@ export const en = {
   "settings.language.name": "Language",
   "settings.language.desc": "Display language for Day Echo. Auto follows Obsidian's language.",
   "settings.language.auto": "Auto",
+  "settings.interactionToday.name": "Show today's card",
+  "settings.interactionToday.desc":
+    "Show the today rating card in echo-interaction blocks that don't specify their own dates.",
+  "settings.interactionYesterday.name": "Show yesterday's card",
+  "settings.interactionYesterday.desc":
+    "Show the yesterday rating card in echo-interaction blocks that don't specify their own dates.",
 
   // Timeline view
   "view.empty": "No diary entries.",
@@ -49,6 +55,7 @@ export const en = {
   "interaction.saved": "Saved ✓",
   "interaction.saveFailed": "Save failed: {error}",
   "interaction.insertMenu": "Insert echo interaction",
+  "interaction.openSettings": "Day Echo settings",
 } as const;
 
 /** The full set of message keys, derived from the English catalog. */
