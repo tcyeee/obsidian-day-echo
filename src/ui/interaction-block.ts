@@ -1,10 +1,7 @@
-import { Notice, TFile, normalizePath, parseYaml } from "obsidian";
+import { Notice, TFile, normalizePath, parseYaml, setIcon } from "obsidian";
 import type DayEchoPlugin from "../main";
+import { BlockConfig, resolveTokens } from "../core/interaction-days";
 import { t } from "../i18n";
-
-interface BlockConfig {
-  date?: string | string[];
-}
 
 interface DayTarget {
   /** Original token from config, e.g. "today" / "yesterday" / a raw date. */
@@ -35,7 +32,10 @@ async function renderBlock(
   el: HTMLElement
 ): Promise<void> {
   const config = parseConfig(source);
-  const tokens = parseDates(config.date);
+  const tokens = resolveTokens(config, {
+    today: plugin.settings.interactionToday,
+    yesterday: plugin.settings.interactionYesterday,
+  });
   const targets = tokens.map((token) => buildTarget(plugin, token));
 
   // A day is hidden once it's fully rated (both energy and mood present).
@@ -223,25 +223,6 @@ function parseConfig(source: string): BlockConfig {
     // ignore, use defaults
   }
   return {};
-}
-
-/**
- * Normalize the `date` config into an ordered list of tokens. Accepts a YAML
- * array (`[today, yesterday]`), a comma-separated string (`today, yesterday`),
- * or a single token. Defaults to today + yesterday. Duplicates are dropped.
- */
-function parseDates(date: string | string[] | undefined): string[] {
-  let tokens: string[];
-  if (Array.isArray(date)) {
-    tokens = date.map((d) => String(d).trim());
-  } else if (typeof date === "string" && date.trim()) {
-    tokens = date.split(",").map((d) => d.trim());
-  } else {
-    tokens = ["today", "yesterday"];
-  }
-  tokens = tokens.filter(Boolean);
-  if (tokens.length === 0) tokens = ["today", "yesterday"];
-  return [...new Set(tokens)];
 }
 
 function buildTarget(plugin: DayEchoPlugin, token: string): DayTarget {
