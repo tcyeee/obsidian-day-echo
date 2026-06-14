@@ -45,6 +45,7 @@ async function renderBlock(
   if (pending.length === 0) return;
 
   el.addClass("ei-block");
+  injectSettingsButton(plugin, el);
 
   let remaining = pending.length;
   const onCardComplete = () => {
@@ -58,6 +59,55 @@ async function renderBlock(
   for (const day of pending) {
     renderCard(plugin, el, day, onCardComplete);
   }
+}
+
+/**
+ * Add a gear button immediately to the left of Obsidian's native
+ * "Edit this block" button. That button is appended asynchronously as a
+ * sibling of our rendered element, so we look for it now and, failing that,
+ * watch the parent until it appears. No-ops gracefully if it never does.
+ */
+function injectSettingsButton(plugin: DayEchoPlugin, el: HTMLElement): void {
+  const tryInject = (): boolean => {
+    const parent = el.parentElement;
+    const editBtn =
+      parent?.querySelector(":scope > .edit-block-button") ??
+      el.querySelector(":scope > .edit-block-button");
+    if (!(editBtn instanceof HTMLElement)) return false;
+    // Don't double-inject if this element gets reprocessed.
+    if (
+      editBtn.previousElementSibling instanceof HTMLElement &&
+      editBtn.previousElementSibling.hasClass("ei-settings-btn")
+    ) {
+      return true;
+    }
+    const btn = createEl("button", { cls: "ei-settings-btn clickable-icon" });
+    setIcon(btn, "settings");
+    btn.setAttribute("aria-label", t("interaction.openSettings"));
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // `app.setting` is outside the public API.
+      const setting = (plugin.app as unknown as {
+        setting: { open(): void; openTabById(id: string): void };
+      }).setting;
+      setting.open();
+      setting.openTabById(plugin.manifest.id);
+    });
+    editBtn.parentElement?.insertBefore(btn, editBtn);
+    return true;
+  };
+
+  if (tryInject()) return;
+
+  const parent = el.parentElement;
+  if (!parent) return;
+  const observer = new MutationObserver(() => {
+    if (tryInject()) observer.disconnect();
+  });
+  observer.observe(parent, { childList: true });
+  // Safety valve: stop watching after a few seconds.
+  window.setTimeout(() => observer.disconnect(), 5000);
 }
 
 function renderCard(

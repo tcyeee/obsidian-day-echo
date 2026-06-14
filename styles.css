@@ -895,3 +895,20 @@ body.day-echo-active .status-bar {
 .ei-status--warn {
   color: var(--color-red);
 }
+
+.ei-settings-btn.clickable-icon {
+  position: absolute;
+  top: var(--size-4-2, 8px);
+  /* Sit just left of the native edit-block button. */
+  right: calc(var(--size-4-2, 8px) + var(--size-4-9, 36px));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+  z-index: var(--layer-popover, 30);
+}
+
+.markdown-reading-view .markdown-preview-section:hover > div:hover .ei-settings-btn.clickable-icon,
+.edit-block-button:hover + .ei-settings-btn.clickable-icon,
+.ei-settings-btn.clickable-icon:hover {
+  opacity: 1;
+}
