@@ -44,10 +44,11 @@ export const en = {
   // Interaction block
   "interaction.energy": "Energy",
   "interaction.mood": "Mood",
-  "interaction.save": "Save",
-  "interaction.rateFirst": "Please finish rating first",
+  "interaction.today": "Today",
+  "interaction.yesterday": "Yesterday",
   "interaction.saved": "Saved ✓",
   "interaction.saveFailed": "Save failed: {error}",
+  "interaction.insertMenu": "Insert echo interaction",
 } as const;
 
 /** The full set of message keys, derived from the English catalog. */

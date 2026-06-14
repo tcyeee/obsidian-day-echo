@@ -3,7 +3,21 @@ import type DayEchoPlugin from "../main";
 import { t } from "../i18n";
 
 interface BlockConfig {
-  date?: string;
+  date?: string | string[];
+}
+
+interface DayTarget {
+  /** Original token from config, e.g. "today" / "yesterday" / a raw date. */
+  token: string;
+  /** Resolved YYYY-MM-DD string. */
+  dateStr: string;
+  /** Friendly label shown at the top of the card. */
+  label: string;
+  /** Absolute vault path of the daily note. */
+  filePath: string;
+  /** Existing scores read from frontmatter (null when absent). */
+  energy: number | null;
+  mood: number | null;
 }
 
 export function registerInteractionBlock(plugin: DayEchoPlugin): void {
@@ -21,61 +35,102 @@ async function renderBlock(
   el: HTMLElement
 ): Promise<void> {
   const config = parseConfig(source);
-  const dateStr = resolveDate(config.date ?? "yesterday");
-  const filePath = buildFilePath(plugin, dateStr);
-  const app = plugin.app;
+  const tokens = parseDates(config.date);
+  const targets = tokens.map((token) => buildTarget(plugin, token));
 
-  // Read existing scores
-  const file = app.vault.getAbstractFileByPath(filePath);
-  let initEnergy: number | null = null;
-  let initMood: number | null = null;
-  if (file instanceof TFile) {
-    const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-    const energy = fm?.["energy"] as number | undefined;
-    const mood = fm?.["mood"] as number | undefined;
-    if (typeof energy === "number") initEnergy = energy;
-    if (typeof mood === "number") initMood = mood;
-  }
+  // A day is hidden once it's fully rated (both energy and mood present).
+  const pending = targets.filter((d) => d.energy === null || d.mood === null);
+
+  // Nothing left to rate — render nothing so the whole block disappears.
+  if (pending.length === 0) return;
 
   el.addClass("ei-block");
-  el.createDiv({ cls: "ei-date", text: `${dateStr}` });
 
-  let energy = initEnergy;
-  let mood = initMood;
-
-  renderRatingField(el, t("interaction.energy"), initEnergy, (v) => { energy = v; });
-  renderRatingField(el, t("interaction.mood"), initMood, (v) => { mood = v; });
-
-  const footer = el.createDiv({ cls: "ei-footer" });
-  const saveBtn = footer.createEl("button", {
-    cls: "ei-save mod-cta",
-    text: t("interaction.save"),
-  });
-  const status = footer.createDiv({ cls: "ei-status" });
-
-  saveBtn.addEventListener("click", () => {
-    if (energy === null || mood === null) {
-      setStatus(status, t("interaction.rateFirst"), false);
-      return;
+  let remaining = pending.length;
+  const onCardComplete = () => {
+    remaining--;
+    if (remaining === 0) {
+      el.empty();
+      el.removeClass("ei-block");
     }
-    const scores = { energy, mood };
+  };
+
+  for (const day of pending) {
+    renderCard(plugin, el, day, onCardComplete);
+  }
+}
+
+function renderCard(
+  plugin: DayEchoPlugin,
+  parent: HTMLElement,
+  day: DayTarget,
+  onComplete: () => void
+): void {
+  const card = parent.createDiv({ cls: "ei-card" });
+  const header = card.createDiv({ cls: "ei-card-header" });
+  header.createDiv({ cls: "ei-card-label", text: day.label });
+  const status = header.createDiv({ cls: "ei-status" });
+
+  let energy = day.energy;
+  let mood = day.mood;
+
+  const save = (key: "energy" | "mood", value: number) => {
+    if (key === "energy") energy = value;
+    else mood = value;
     void (async () => {
       try {
-        await writeScores(plugin, filePath, scores);
-        setStatus(status, t("interaction.saved"), true);
+        await writeScores(plugin, day.filePath, { [key]: value });
+        flashSaved(status);
+        // Once both scores are in, play the "saved" flash, then animate the
+        // card out before removing it from the layout.
+        if (energy !== null && mood !== null) {
+          window.setTimeout(() => dismissCard(card, onComplete), 900);
+        }
       } catch (err) {
         const msg = t("interaction.saveFailed", { error: String(err) });
-        setStatus(status, msg, false);
+        status.setText(msg);
+        status.removeClass("ei-status--ok");
+        status.addClass("ei-status--warn");
         new Notice(msg);
       }
     })();
-  });
+  };
+
+  renderRatingField(card, t("interaction.energy"), day.energy, (v) =>
+    save("energy", v)
+  );
+  renderRatingField(card, t("interaction.mood"), day.mood, (v) =>
+    save("mood", v)
+  );
 }
 
-function setStatus(el: HTMLElement, text: string, ok: boolean): void {
-  el.setText(text);
-  el.toggleClass("ei-status--ok", ok);
-  el.toggleClass("ei-status--warn", !ok);
+/** Fade + collapse the card out of view, then remove it and notify. */
+function dismissCard(card: HTMLElement, onComplete: () => void): void {
+  // Pin the current height so the collapse transition has something to animate.
+  card.style.maxHeight = `${card.scrollHeight}px`;
+  // Force a reflow so the starting max-height is committed before we shrink it.
+  void card.offsetHeight;
+  card.addClass("is-leaving");
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    card.remove();
+    onComplete();
+  };
+  card.addEventListener("transitionend", finish, { once: true });
+  // Fallback in case transitionend never fires (e.g. reduced-motion).
+  window.setTimeout(finish, 500);
+}
+
+/** Briefly show a "saved ✓" confirmation, then fade it out. */
+function flashSaved(el: HTMLElement): void {
+  el.setText(t("interaction.saved"));
+  el.removeClass("ei-status--warn");
+  el.addClass("ei-status--ok");
+  el.addClass("is-visible");
+  window.setTimeout(() => el.removeClass("is-visible"), 1500);
 }
 
 function renderRatingField(
@@ -91,7 +146,7 @@ function renderRatingField(
   const btns: HTMLElement[] = [];
   for (let i = 1; i <= 5; i++) {
     const btn = dots.createEl("button", { cls: "ei-dot", text: String(i) });
-    if (initial !== null && i <= initial) btn.addClass("is-filled");
+    if (initial !== null && i < initial) btn.addClass("is-filled");
     if (initial === i) btn.addClass("is-selected");
     btns.push(btn);
   }
@@ -168,6 +223,53 @@ function parseConfig(source: string): BlockConfig {
     // ignore, use defaults
   }
   return {};
+}
+
+/**
+ * Normalize the `date` config into an ordered list of tokens. Accepts a YAML
+ * array (`[today, yesterday]`), a comma-separated string (`today, yesterday`),
+ * or a single token. Defaults to today + yesterday. Duplicates are dropped.
+ */
+function parseDates(date: string | string[] | undefined): string[] {
+  let tokens: string[];
+  if (Array.isArray(date)) {
+    tokens = date.map((d) => String(d).trim());
+  } else if (typeof date === "string" && date.trim()) {
+    tokens = date.split(",").map((d) => d.trim());
+  } else {
+    tokens = ["today", "yesterday"];
+  }
+  tokens = tokens.filter(Boolean);
+  if (tokens.length === 0) tokens = ["today", "yesterday"];
+  return [...new Set(tokens)];
+}
+
+function buildTarget(plugin: DayEchoPlugin, token: string): DayTarget {
+  const dateStr = resolveDate(token);
+  const filePath = buildFilePath(plugin, dateStr);
+  const { energy, mood } = readScores(plugin, filePath);
+  return { token, dateStr, label: labelFor(token, dateStr), filePath, energy, mood };
+}
+
+function readScores(
+  plugin: DayEchoPlugin,
+  filePath: string
+): { energy: number | null; mood: number | null } {
+  const file = plugin.app.vault.getAbstractFileByPath(filePath);
+  if (!(file instanceof TFile)) return { energy: null, mood: null };
+  const fm = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+  const energy = fm?.["energy"];
+  const mood = fm?.["mood"];
+  return {
+    energy: typeof energy === "number" ? energy : null,
+    mood: typeof mood === "number" ? mood : null,
+  };
+}
+
+function labelFor(token: string, dateStr: string): string {
+  if (token === "today") return t("interaction.today");
+  if (token === "yesterday") return t("interaction.yesterday");
+  return dateStr;
 }
 
 function resolveDate(dateStr: string): string {

@@ -783,10 +783,40 @@ body.day-echo-active .status-bar {
   gap: 14px;
 }
 
-.ei-date {
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
+.ei-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.ei-card.is-leaving {
+  max-height: 0 !important;
+  margin: 0;
+  padding-top: 0;
+  border-top-width: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: max-height 300ms ease, opacity 220ms ease,
+    transform 300ms ease, padding-top 300ms ease;
+}
+
+.ei-card + .ei-card {
+  padding-top: 14px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.ei-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ei-card-label {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
 }
 
 .ei-field {
@@ -796,10 +826,11 @@ body.day-echo-active .status-bar {
 }
 
 .ei-label {
-  width: 2.5em;
+  min-width: 3.5em;
   font-size: var(--font-ui-medium);
   color: var(--text-normal);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .ei-dots {
@@ -844,19 +875,17 @@ body.day-echo-active .status-bar {
   color: var(--text-on-accent);
 }
 
-.ei-footer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ei-save {
-  flex-shrink: 0;
-}
-
 .ei-status {
   font-size: var(--font-ui-small);
   color: var(--text-muted);
+  min-height: 1.2em;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.ei-status.is-visible,
+.ei-status.ei-status--warn {
+  opacity: 1;
 }
 
 .ei-status--ok {

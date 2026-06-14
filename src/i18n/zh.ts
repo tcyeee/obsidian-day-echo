@@ -40,8 +40,9 @@ export const zh: Messages = {
   // Interaction block
   "interaction.energy": "精力",
   "interaction.mood": "心情",
-  "interaction.save": "保存",
-  "interaction.rateFirst": "请先完成评分",
+  "interaction.today": "今天",
+  "interaction.yesterday": "昨天",
   "interaction.saved": "已保存 ✓",
   "interaction.saveFailed": "保存失败: {error}",
+  "interaction.insertMenu": "插入互动卡片",
 };

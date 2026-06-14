@@ -35,6 +35,6 @@ describe("t", () => {
 
   test("leaves text unchanged when no params are given", () => {
     setLocale("en");
-    expect(t("interaction.save")).toBe("Save");
+    expect(t("interaction.saved")).toBe("Saved ✓");
   });
 });
