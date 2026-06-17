@@ -10,15 +10,12 @@ export const zh: Messages = {
   "settings.oldestFirst.desc": "默认排序方向。关闭时最新的日记显示在顶部。",
   "settings.diaryNav.name": "显示日记导航",
   "settings.diaryNav.desc": "在打开的日记顶部显示上一篇 / 下一篇导航条。",
+  "settings.location.name": "创建时记录位置与天气",
+  "settings.location.desc":
+    "创建今天的日记时，通过 IP 查询你所在的城市与坐标并写入 frontmatter，同时记录当天天气与温湿度，并用实测值回填昨天日记的天气。需要联网，会把你的 IP 发送给 ip-api.com，并向 open-meteo.com 查询天气。",
   "settings.language.name": "语言",
   "settings.language.desc": "Day Echo 的显示语言。“自动”跟随 Obsidian 的界面语言。",
   "settings.language.auto": "自动",
-  "settings.interactionToday.name": "显示今天的卡片",
-  "settings.interactionToday.desc":
-    "在未指定日期的 echo-interaction 卡片中显示“今天”的评分卡。",
-  "settings.interactionYesterday.name": "显示昨天的卡片",
-  "settings.interactionYesterday.desc":
-    "在未指定日期的 echo-interaction 卡片中显示“昨天”的评分卡。",
 
   // Timeline view
   "view.empty": "暂无日记。",
@@ -51,5 +48,6 @@ export const zh: Messages = {
   "interaction.saved": "已保存 ✓",
   "interaction.saveFailed": "保存失败: {error}",
   "interaction.insertMenu": "插入互动卡片",
-  "interaction.openSettings": "Day Echo 设置",
+  "interaction.toggleSettings": "显示设置",
+  "interaction.settingsLabel": "显示：",
 };

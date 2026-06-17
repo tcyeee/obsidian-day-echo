@@ -4,11 +4,11 @@ import {
   Scope,
   TFile,
   WorkspaceLeaf,
-  normalizePath,
   setIcon,
 } from "obsidian";
 import { DiaryEntry, ZoomLevel } from "../types";
 import { buildItems, prependToday } from "../core/aggregate";
+import { dailyNotePath } from "../core/daily-note";
 import { planLayout, resolveMarkerTops } from "../core/layout";
 import { scanDiaries } from "../core/scanner";
 import type DayEchoPlugin from "../main";
@@ -676,17 +676,14 @@ export class DayEchoView extends ItemView {
 
   /** Create (if needed) and open today's daily note. */
   private async createTodayNote(): Promise<void> {
-    const rawFolder = this.plugin.settings.dailyFolder.replace(/\/+$/, "");
-    const now = new Date();
-    const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-    const name = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
-    const path = normalizePath(rawFolder ? `${rawFolder}/${name}` : name);
+    const path = dailyNotePath(this.plugin.settings.dailyFolder, new Date());
     // Derive the (already normalized) parent folder from the final path so the
     // Vault API never sees an un-normalized, user-defined path.
     const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
     try {
       const existing = this.app.vault.getAbstractFileByPath(path);
       let file: TFile;
+      let created = false;
       if (existing instanceof TFile) {
         file = existing;
       } else {
@@ -694,8 +691,11 @@ export class DayEchoView extends ItemView {
           await this.app.vault.createFolder(folder);
         }
         file = await this.app.vault.create(path, "");
+        created = true;
       }
       await this.app.workspace.getLeaf(false).openFile(file);
+      // Fire-and-forget so the IP / weather lookups never delay opening the note.
+      if (created) void this.plugin.recordContext(file);
     } catch (err) {
       new Notice(t("view.createFailed", { error: String(err) }));
     }

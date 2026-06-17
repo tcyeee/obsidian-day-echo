@@ -1,5 +1,8 @@
-import { Plugin, TAbstractFile } from "obsidian";
+import { Plugin, TAbstractFile, TFile } from "obsidian";
 import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./ui/view";
+import { fetchLocation } from "./core/geolocation";
+import { fetchWeather, type WeatherResult } from "./core/weather";
+import { dailyNotePath } from "./core/daily-note";
 import { DiaryNav } from "./ui/diary-nav";
 import { registerInteractionBlock } from "./ui/interaction-block";
 import { registerInsertMenu } from "./ui/insert-menu";
@@ -130,4 +133,75 @@ export default class DayEchoPlugin extends Plugin {
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
   }
+
+  /**
+   * Record creation context on a freshly created note: the creator's city and
+   * coordinates (by IP) plus today's weather, then back-fill yesterday's note
+   * with its now-finalized actual weather. Fire-and-forget: callers should not
+   * await this, so the network lookups never delay opening the note. No-ops
+   * when the setting is off; stays silent on any failure. VPN/proxy exits get a
+   * "(VPN?)" marker since the reported city is the exit node's, not the user's.
+   */
+  async recordContext(file: TFile): Promise<void> {
+    if (!this.settings.recordLocation) return;
+    try {
+      const geo = await fetchLocation();
+      if (geo) {
+        const location = geo.proxy ? `${geo.location} (VPN?)` : geo.location;
+        const hasCoords = geo.lat !== null && geo.lon !== null;
+        // Today's high/low are still a forecast; backfillYesterday corrects each
+        // note with actuals the next day a note is created.
+        const weather = hasCoords
+          ? await fetchWeather(geo.lat as number, geo.lon as number, "today")
+          : null;
+        await this.app.fileManager.processFrontMatter(file, (fm) => {
+          fm.location = location;
+          if (hasCoords) fm.geo = `${geo.lat},${geo.lon}`;
+          if (weather) applyWeather(fm, weather);
+        });
+      }
+      await this.backfillYesterday();
+    } catch (err) {
+      console.warn("Day Echo: failed to record creation context", err);
+    }
+  }
+
+  /**
+   * Overwrite yesterday's note weather with what actually happened. Yesterday's
+   * note stored its own `geo`, so a trip is handled correctly — the lookup uses
+   * where you were, not where you are now. No-ops when yesterday's note is
+   * missing or has no coordinates (created before this feature, or with
+   * location recording off).
+   */
+  private async backfillYesterday(): Promise<void> {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const path = dailyNotePath(this.settings.dailyFolder, yesterday);
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return;
+    const coords = parseGeo(this.app.metadataCache.getFileCache(file)?.frontmatter?.geo);
+    if (!coords) return;
+    const weather = await fetchWeather(coords.lat, coords.lon, "yesterday");
+    if (!weather) return;
+    await this.app.fileManager.processFrontMatter(file, (fm) => {
+      applyWeather(fm, weather);
+    });
+  }
+}
+
+/** Write a weather summary into frontmatter using the agreed field shape. */
+function applyWeather(fm: Record<string, unknown>, weather: WeatherResult): void {
+  fm.weather = weather.condition;
+  fm.temp = `${weather.tempLow}~${weather.tempHigh}°C`;
+  fm.humidity = `${weather.humidity}%`;
+}
+
+/** Parse a stored `"lat,lon"` frontmatter value back into coordinates. */
+function parseGeo(value: unknown): { lat: number; lon: number } | null {
+  if (typeof value !== "string") return null;
+  const [latStr, lonStr] = value.split(",");
+  const lat = Number(latStr);
+  const lon = Number(lonStr);
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
+  return { lat, lon };
 }

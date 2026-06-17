@@ -7,12 +7,6 @@ export interface BlockConfig {
   date?: string | string[];
 }
 
-/** Which built-in days to show when a block has no explicit `date:`. */
-export interface EnabledDays {
-  today: boolean;
-  yesterday: boolean;
-}
-
 /**
  * Normalize the `date` config into an ordered list of tokens. Accepts a YAML
  * array (`[today, yesterday]`), a comma-separated string (`today, yesterday`),
@@ -32,17 +26,21 @@ export function parseDates(date: string | string[] | undefined): string[] {
   return [...new Set(tokens)];
 }
 
+/** Minimal per-day state that determines what a block renders. */
+export interface DayState {
+  filePath: string;
+  energy: number | null;
+  mood: number | null;
+}
+
 /**
- * Resolve the day tokens a block should render. An inline `date:` always wins
- * (override). Otherwise the list is built from the user's settings toggles,
- * which may be empty (block renders nothing).
+ * A stable fingerprint of what the block would render for `targets`. Two renders
+ * with the same fingerprint are visually identical, so the block can skip the
+ * repaint; anything that changes the result — a score added or cleared, a day
+ * rolling over to a new file path — shifts the fingerprint and forces a repaint.
  */
-export function resolveTokens(config: BlockConfig, enabled: EnabledDays): string[] {
-  if (config.date != null) {
-    return parseDates(config.date);
-  }
-  const tokens: string[] = [];
-  if (enabled.today) tokens.push("today");
-  if (enabled.yesterday) tokens.push("yesterday");
-  return tokens;
+export function renderFingerprint(targets: DayState[]): string {
+  return targets
+    .map((d) => `${d.filePath}|${d.energy ?? ""}|${d.mood ?? ""}`)
+    .join("\n");
 }

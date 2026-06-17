@@ -898,17 +898,102 @@ body.day-echo-active .status-bar {
 
 .ei-settings-btn.clickable-icon {
   position: absolute;
-  top: var(--size-4-2, 8px);
-  /* Sit just left of the native edit-block button. */
-  right: calc(var(--size-4-2, 8px) + var(--size-4-9, 36px));
+  /* Nudged 3px up from the native edit-block button, and 3px to its right. */
+  top: calc(var(--size-4-2, 8px) - 3px);
+  right: calc(var(--size-4-2, 8px) + var(--size-4-9, 36px) - 3px);
+  /* Mirror the native edit-block button's box and icon size. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  /* Bare icon, no background until hovered. */
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  color: var(--text-normal);
+  /* Hidden until the hosting block is hovered. */
   opacity: 0;
-  transition: opacity 0.15s ease;
   cursor: pointer;
   z-index: var(--layer-popover, 30);
 }
 
+/* The native edit-block button renders its glyph at --icon-s; match it so the
+   gear doesn't look bulkier than the </> beside it. */
+.ei-settings-btn.clickable-icon svg {
+  width: var(--icon-s, 16px);
+  height: var(--icon-s, 16px);
+}
+
+/* Reveal the gear whenever the hosting block is hovered (edit + reading views). */
+.cm-embed-block:hover .ei-settings-btn.clickable-icon,
 .markdown-reading-view .markdown-preview-section:hover > div:hover .ei-settings-btn.clickable-icon,
 .edit-block-button:hover + .ei-settings-btn.clickable-icon,
 .ei-settings-btn.clickable-icon:hover {
   opacity: 1;
+}
+
+/* Show the background only while the gear itself is hovered. */
+.ei-settings-btn.clickable-icon:hover {
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+.ei-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.ei-settings-row.is-hidden {
+  display: none;
+}
+
+.ei-settings-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ei-day-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.ei-day-chip {
+  padding: 4px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.ei-day-chip:hover {
+  border-color: var(--interactive-accent);
+  color: var(--text-normal);
+  box-shadow: none;
+}
+
+.ei-day-chip.is-on {
+  border-color: var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.ei-day-chip.is-shake {
+  animation: ei-shake 0.4s ease;
+}
+
+@keyframes ei-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
 }

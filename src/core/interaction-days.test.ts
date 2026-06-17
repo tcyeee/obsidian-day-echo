@@ -1,7 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseDates, resolveTokens } from "./interaction-days";
-
-const enabled = (today: boolean, yesterday: boolean) => ({ today, yesterday });
+import { parseDates, renderFingerprint } from "./interaction-days";
 
 describe("parseDates", () => {
   test("defaults to today + yesterday when empty", () => {
@@ -19,39 +17,42 @@ describe("parseDates", () => {
       "yesterday",
     ]);
   });
+
+  test("a single token stays a one-element list", () => {
+    expect(parseDates("today")).toEqual(["today"]);
+    expect(parseDates(["yesterday"])).toEqual(["yesterday"]);
+  });
 });
 
-describe("resolveTokens", () => {
-  test("inline string date overrides settings", () => {
-    expect(resolveTokens({ date: "2026-06-10" }, enabled(false, false))).toEqual([
-      "2026-06-10",
+describe("renderFingerprint", () => {
+  test("is stable for identical state", () => {
+    const a = renderFingerprint([{ filePath: "x.md", energy: 3, mood: 2 }]);
+    const b = renderFingerprint([{ filePath: "x.md", energy: 3, mood: 2 }]);
+    expect(a).toBe(b);
+  });
+
+  test("changes when a score is added or cleared", () => {
+    const empty = renderFingerprint([
+      { filePath: "d/2026-06-17.md", energy: null, mood: null },
     ]);
-  });
-
-  test("inline array date overrides settings", () => {
-    expect(
-      resolveTokens({ date: ["today", "yesterday"] }, enabled(false, false))
-    ).toEqual(["today", "yesterday"]);
-  });
-
-  test("no inline date: both toggles on -> today + yesterday", () => {
-    expect(resolveTokens({}, enabled(true, true))).toEqual([
-      "today",
-      "yesterday",
+    const rated = renderFingerprint([
+      { filePath: "d/2026-06-17.md", energy: 4, mood: null },
     ]);
+    expect(rated).not.toBe(empty);
+    // 0 must stay distinct from "absent".
+    const zero = renderFingerprint([
+      { filePath: "d/2026-06-17.md", energy: 0, mood: null },
+    ]);
+    expect(zero).not.toBe(empty);
   });
 
-  test("no inline date: only today", () => {
-    expect(resolveTokens({}, enabled(true, false))).toEqual(["today"]);
-  });
-
-  test("no inline date: both off -> empty", () => {
-    expect(resolveTokens({}, enabled(false, false))).toEqual([]);
-  });
-
-  test("empty `date:` (null) falls back to settings", () => {
-    expect(
-      resolveTokens({ date: null as unknown as string }, enabled(true, false))
-    ).toEqual(["today"]);
+  test("reflects the day set so a rollover forces a repaint", () => {
+    const today = renderFingerprint([
+      { filePath: "d/2026-06-17.md", energy: null, mood: null },
+    ]);
+    const tomorrow = renderFingerprint([
+      { filePath: "d/2026-06-18.md", energy: null, mood: null },
+    ]);
+    expect(tomorrow).not.toBe(today);
   });
 });

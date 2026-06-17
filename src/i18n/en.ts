@@ -14,15 +14,12 @@ export const en = {
   "settings.oldestFirst.desc": "Default sort direction. Off shows the newest entries at the top.",
   "settings.diaryNav.name": "Show diary navigation",
   "settings.diaryNav.desc": "Show a prev/next bar on top of open daily notes.",
+  "settings.location.name": "Record location and weather on creation",
+  "settings.location.desc":
+    "When creating today's note, look up your city and coordinates by IP and write them to the frontmatter, record today's weather and temperature/humidity, and back-fill yesterday's note with its actual weather. Requires a network connection; sends your IP to ip-api.com and queries open-meteo.com for weather.",
   "settings.language.name": "Language",
   "settings.language.desc": "Display language for Day Echo. Auto follows Obsidian's language.",
   "settings.language.auto": "Auto",
-  "settings.interactionToday.name": "Show today's card",
-  "settings.interactionToday.desc":
-    "Show the today rating card in echo-interaction blocks that don't specify their own dates.",
-  "settings.interactionYesterday.name": "Show yesterday's card",
-  "settings.interactionYesterday.desc":
-    "Show the yesterday rating card in echo-interaction blocks that don't specify their own dates.",
 
   // Timeline view
   "view.empty": "No diary entries.",
@@ -55,7 +52,8 @@ export const en = {
   "interaction.saved": "Saved ✓",
   "interaction.saveFailed": "Save failed: {error}",
   "interaction.insertMenu": "Insert echo interaction",
-  "interaction.openSettings": "Day Echo settings",
+  "interaction.toggleSettings": "Display settings",
+  "interaction.settingsLabel": "Show:",
 } as const;
 
 /** The full set of message keys, derived from the English catalog. */
