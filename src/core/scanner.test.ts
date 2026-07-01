@@ -6,7 +6,38 @@ vi.mock("obsidian", () => ({
   TFile: class {},
 }));
 
-import { isImageRef } from "./scanner";
+import { isEmptyEntry, isImageRef } from "./scanner";
+import type { DiaryEntry } from "../types";
+
+const makeEntry = (over: Partial<DiaryEntry>): DiaryEntry => ({
+  date: new Date(2026, 0, 1),
+  file: {} as DiaryEntry["file"],
+  previewText: "",
+  searchText: "",
+  images: [],
+  tags: [],
+  ...over,
+});
+
+describe("isEmptyEntry", () => {
+  test("empty when the note has neither body text nor images", () => {
+    expect(isEmptyEntry(makeEntry({}))).toBe(true);
+  });
+
+  test("not empty when the note has body text", () => {
+    expect(isEmptyEntry(makeEntry({ previewText: "went for a walk" }))).toBe(false);
+  });
+
+  test("not empty when the note has images but no text", () => {
+    expect(isEmptyEntry(makeEntry({ images: ["app://vault/photo.png"] }))).toBe(false);
+  });
+
+  test("empty when only frontmatter properties (weather/tags) exist", () => {
+    // Frontmatter is stripped before previewText, so a note carrying only
+    // recorded weather/location or frontmatter tags reads as empty.
+    expect(isEmptyEntry(makeEntry({ tags: ["#weather"] }))).toBe(true);
+  });
+});
 
 describe("isImageRef", () => {
   test("accepts common image extensions", () => {

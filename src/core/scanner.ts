@@ -79,8 +79,22 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
     if (!seen.has(path)) parseCache.delete(path);
   }
 
-  entries.sort((a, b) => b.date.getTime() - a.date.getTime());
-  return entries;
+  // Hide notes that are empty apart from frontmatter: an auto-created daily
+  // may carry only recorded weather/location properties with no diary written
+  // yet, and those should not surface as timeline cards.
+  const visible = entries.filter((e) => !isEmptyEntry(e));
+  visible.sort((a, b) => b.date.getTime() - a.date.getTime());
+  return visible;
+}
+
+/**
+ * True when a note has no body content — no preview text and no images. Such a
+ * note exists only as frontmatter/properties (e.g. the weather and geolocation
+ * recorded on a freshly created daily), which `stripFrontmatter` removes before
+ * the preview is built, so it is skipped rather than shown as a blank card.
+ */
+export function isEmptyEntry(entry: DiaryEntry): boolean {
+  return entry.previewText.length === 0 && entry.images.length === 0;
 }
 
 /** Resolve the entry date from the filename, falling back to frontmatter `created`. */
