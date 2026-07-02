@@ -472,10 +472,12 @@ export class DayEchoView extends ItemView {
     // where the top of the timeline is today. When today's diary exists it
     // flows into the columns as a regular (highlighted) card under its own
     // "今天" marker; only the create-CTA renders as a standalone block.
+    // The create-CTA only belongs in the month view; the year view is a
+    // coarse overview where an empty "start today" card would be out of place.
     const ascending = this.plugin.settings.sortAscending;
     this.spacerEl?.toggleClass("de-hidden", ascending);
     const todayEntry = ascending ? null : this.findToday();
-    if (!ascending && !todayEntry) this.renderTodayCta();
+    if (!ascending && !todayEntry && this.zoom === "month") this.renderTodayCta();
 
     // Today's entry gets its own section; drop it from the grouped flow so
     // it does not appear twice.

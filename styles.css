@@ -299,8 +299,34 @@ body.day-echo-active .status-bar {
 }
 
 .de-zoom-year .de-sec-label {
-  font-size: 1.9em;
+  width: 140px;
+  font-size: 3.5em;
   color: var(--de-rose);
+  opacity: 0.8;
+}
+
+/* The oversized year number needs a wider label column, so the whole timeline
+   (axis line, group dots, card columns) shifts right to stay clear of it. The
+   +45px offset keeps every part's relative alignment intact. */
+.de-zoom-year .de-marker {
+  width: 160px;
+}
+
+.de-zoom-year .de-sec-count {
+  width: 140px;
+}
+
+.de-zoom-year .de-sec-dot {
+  left: 145px;
+}
+
+.de-inner.de-zoom-year::before {
+  left: 150px;
+}
+
+.de-zoom-year .de-flow,
+.de-zoom-year .de-today-wrap {
+  margin-left: 175px;
 }
 
 /* Entry count shown under the month/year label in aggregated views */
