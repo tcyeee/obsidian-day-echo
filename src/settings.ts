@@ -1,8 +1,9 @@
-import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type DayEchoPlugin from "./main";
-import { ZoomLevel } from "./types";
+import { FieldDef, FieldType, ZoomLevel } from "./types";
 import { t, type LanguageSetting } from "./i18n";
 import { isDailyNotesPluginEnabled } from "./core/daily-notes-plugin";
+import { isDuplicateKey, isValidKey, isValidRange } from "./core/field-defs";
 
 export interface DayEchoSettings {
   /** Folder scanned for daily notes. */
@@ -17,6 +18,8 @@ export interface DayEchoSettings {
   recordLocation: boolean;
   /** UI language; `auto` follows Obsidian's interface language. */
   language: LanguageSetting;
+  /** User-defined per-day data fields shown in echo-interaction blocks. */
+  dataFields: FieldDef[];
 }
 
 export const DEFAULT_SETTINGS: DayEchoSettings = {
@@ -26,6 +29,10 @@ export const DEFAULT_SETTINGS: DayEchoSettings = {
   showDiaryNav: true,
   recordLocation: true,
   language: "auto",
+  dataFields: [
+    { key: "energy", label: "Energy", type: "number", min: 1, max: 5 },
+    { key: "mood", label: "Mood", type: "number", min: 1, max: 5 },
+  ],
 };
 
 export class DayEchoSettingTab extends PluginSettingTab {
@@ -117,6 +124,34 @@ export class DayEchoSettingTab extends PluginSettingTab {
               );
             },
           },
+          { name: "", desc: t("settings.dataFields.desc") },
+          {
+            type: "list",
+            heading: t("settings.dataFields.header"),
+            items: this.plugin.settings.dataFields.map((field, index) => ({
+              name: field.label || field.key || t("settings.dataFields.labelPlaceholder"),
+              render: (setting: Setting) => this.buildFieldRow(setting, field, index),
+            })),
+            onDelete: async (index: number) => {
+              this.plugin.settings.dataFields.splice(index, 1);
+              await this.plugin.saveSettings();
+              this.update();
+            },
+            addItem: {
+              name: t("settings.dataFields.addButton"),
+              action: async () => {
+                this.plugin.settings.dataFields.push({
+                  key: "",
+                  label: "",
+                  type: "number",
+                  min: 1,
+                  max: 5,
+                });
+                await this.plugin.saveSettings();
+                this.update();
+              },
+            },
+          },
         ],
       },
     ];
@@ -153,5 +188,97 @@ export class DayEchoSettingTab extends PluginSettingTab {
           .onClick(() => select(true));
       });
     sync();
+  }
+
+  private buildFieldRow(setting: Setting, field: FieldDef, index: number): void {
+    setting
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.dataFields.labelPlaceholder"))
+          .setValue(field.label)
+          .onChange(async (value) => {
+            field.label = value;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.dataFields.keyPlaceholder"))
+          .setValue(field.key)
+          .onChange(async (value) => {
+            const trimmed = value.trim();
+            if (!trimmed) return;
+            if (!isValidKey(trimmed)) {
+              new Notice(t("settings.dataFields.invalidKey"));
+              text.setValue(field.key);
+              return;
+            }
+            if (isDuplicateKey(trimmed, this.plugin.settings.dataFields, index)) {
+              new Notice(t("settings.dataFields.duplicateKey", { key: trimmed }));
+              text.setValue(field.key);
+              return;
+            }
+            field.key = trimmed;
+            await this.plugin.saveSettings();
+          })
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("number", t("settings.dataFields.typeNumber"))
+          .addOption("boolean", t("settings.dataFields.typeBoolean"))
+          .setValue(field.type)
+          .onChange(async (value) => {
+            field.type = value as FieldType;
+            if (field.type === "number") {
+              field.min = field.min ?? 1;
+              field.max = field.max ?? 5;
+            } else {
+              delete field.min;
+              delete field.max;
+            }
+            await this.plugin.saveSettings();
+            this.update();
+          })
+      );
+
+    if (field.type === "number") {
+      setting
+        .addText((text) => {
+          text.inputEl.type = "number";
+          text
+            .setPlaceholder(t("settings.dataFields.minPlaceholder"))
+            .setValue(String(field.min ?? ""))
+            .onChange(async (value) => {
+              if (value.trim() === "") return;
+              const min = Number(value);
+              const max = field.max ?? min + 1;
+              if (!isValidRange(min, max)) {
+                new Notice(t("settings.dataFields.invalidRange"));
+                text.setValue(String(field.min ?? ""));
+                return;
+              }
+              field.min = min;
+              await this.plugin.saveSettings();
+            });
+        })
+        .addText((text) => {
+          text.inputEl.type = "number";
+          text
+            .setPlaceholder(t("settings.dataFields.maxPlaceholder"))
+            .setValue(String(field.max ?? ""))
+            .onChange(async (value) => {
+              if (value.trim() === "") return;
+              const max = Number(value);
+              const min = field.min ?? max - 1;
+              if (!isValidRange(min, max)) {
+                new Notice(t("settings.dataFields.invalidRange"));
+                text.setValue(String(field.max ?? ""));
+                return;
+              }
+              field.max = max;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
   }
 }
