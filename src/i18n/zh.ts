@@ -53,7 +53,27 @@ export const zh: Messages = {
   "interaction.insertMenu": "插入互动卡片",
   "interaction.toggleSettings": "显示设置",
   "interaction.settingsLabel": "显示：",
+  "interaction.fieldsLabel": "字段：",
+  "interaction.yes": "是",
+  "interaction.no": "否",
 
   // Startup
   "notice.dailyNotesRequired": "Day Echo 需要启用核心「日记」插件才能启动。",
+
+  // Settings tab — data fields
+  "settings.dataFields.header": "数据字段",
+  "settings.dataFields.desc":
+    "定义你每天想记录的数据项，以及每项的数据格式。它们会作为可选字段出现在交互卡片中。",
+  "settings.dataFields.addButton": "添加字段",
+  "settings.dataFields.labelPlaceholder": "名称",
+  "settings.dataFields.keyPlaceholder": "key",
+  "settings.dataFields.typeNumber": "数字",
+  "settings.dataFields.typeBoolean": "布尔",
+  "settings.dataFields.minPlaceholder": "最小值",
+  "settings.dataFields.maxPlaceholder": "最大值",
+  "settings.dataFields.deleteAria": "删除字段",
+  "settings.dataFields.invalidKey":
+    "字段 key 必须以字母或下划线开头，且只能包含字母、数字、下划线。",
+  "settings.dataFields.duplicateKey": "字段 key \"{key}\" 已被其他字段使用。",
+  "settings.dataFields.invalidRange": "最小值和最大值必须是整数，且最小值要小于最大值。",
 };
