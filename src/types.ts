@@ -12,6 +12,22 @@ export type RenderItem =
   /** A "+N more" placeholder holding the entries hidden from a group. */
   | { kind: "fold"; key: string; hidden: DiaryEntry[] };
 
+/** A user-defined field's storage format: a ranged number, or a yes/no flag. */
+export type FieldType = "number" | "boolean";
+
+/**
+ * A user-defined field tracked per day, e.g. "Mood" (number, 1~5) or "Coffee"
+ * (boolean). `key` is the frontmatter identifier the value is stored under;
+ * `min`/`max` only apply when `type` is `"number"`.
+ */
+export interface FieldDef {
+  key: string;
+  label: string;
+  type: FieldType;
+  min?: number;
+  max?: number;
+}
+
 /** One parsed daily note, ready to render on the timeline. */
 export interface DiaryEntry {
   /** Date of the entry, used for sorting and node grouping. */
