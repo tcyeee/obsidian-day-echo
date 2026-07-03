@@ -44,8 +44,6 @@ export const zh: Messages = {
   "nav.next": "后一篇",
 
   // Interaction block
-  "interaction.energy": "精力",
-  "interaction.mood": "心情",
   "interaction.today": "今天",
   "interaction.yesterday": "昨天",
   "interaction.saved": "已保存 ✓",

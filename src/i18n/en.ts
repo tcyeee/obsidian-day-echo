@@ -48,8 +48,6 @@ export const en = {
   "nav.next": "Next",
 
   // Interaction block
-  "interaction.energy": "Energy",
-  "interaction.mood": "Mood",
   "interaction.today": "Today",
   "interaction.yesterday": "Yesterday",
   "interaction.saved": "Saved ✓",

@@ -10,12 +10,19 @@ import {
 } from "obsidian";
 import type DayEchoPlugin from "../main";
 import { formatDate } from "../core/daily-note";
-import { BlockConfig, parseDates, renderFingerprint } from "../core/interaction-days";
+import {
+  BlockConfig,
+  FieldValue,
+  parseDates,
+  parseFields,
+  renderFingerprint,
+} from "../core/interaction-days";
+import type { FieldDef } from "../types";
 import { t } from "../i18n";
 
 /**
  * Which blocks currently have their inline settings row expanded, keyed by
- * `${sourcePath}:${startLine}`. Writing the `date:` config re-renders the block
+ * `${sourcePath}:${startLine}`. Writing the block's config back re-renders it
  * from scratch; this lets the row reopen in the same state after that re-render.
  */
 const openRows = new Set<string>();
@@ -29,9 +36,8 @@ interface DayTarget {
   label: string;
   /** Absolute vault path of the daily note. */
   filePath: string;
-  /** Existing scores read from frontmatter (null when absent). */
-  energy: number | null;
-  mood: number | null;
+  /** This block's currently-selected field values, keyed by field key. */
+  values: Record<string, FieldValue>;
 }
 
 export function registerInteractionBlock(plugin: DayEchoPlugin): void {
@@ -55,7 +61,7 @@ const DAY_CHECK_MS = 60_000;
  *   1. the clock: a once-a-minute check re-paints when the calendar day rolls
  *      over, so "today"/"yesterday" move forward on a note left open past
  *      midnight;
- *   2. the data: it watches the daily notes it shows, so a score added/cleared,
+ *   2. the data: it watches the daily notes it shows, so a value added/cleared,
  *      the note deleted, or the new day's note appearing re-derives the card.
  * A render fingerprint skips no-op repaints; a short suppression window keeps
  * the block's own saves from cutting their save→dismiss animation short.
@@ -116,16 +122,36 @@ class InteractionBlock extends MarkdownRenderChild {
 
   /**
    * Re-derive state and repaint, skipping the repaint when the rendered result
-   * wouldn't change (unless `force`, used when the day set or config shifts).
+   * wouldn't change (unless `force`, used when the day set, field set, or
+   * config shifts).
    */
   private repaint(force: boolean): void {
-    const tokens = parseDates(parseConfig(this.source).date);
-    const targets = tokens.map((token) => buildTarget(this.plugin, token));
+    const config = parseConfig(this.source);
+    const tokens = parseDates(config.date);
+    const fieldDefs = resolveFields(this.plugin, config.fields);
+    const targets = tokens.map((token) => buildTarget(this.plugin, token, fieldDefs));
     const fp = renderFingerprint(targets);
     if (!force && fp === this.fingerprint) return;
     this.fingerprint = fp;
-    paintBlock(this.plugin, this.containerEl, this.ctx, this, tokens, targets);
+    paintBlock(this.plugin, this.containerEl, this.ctx, this, tokens, fieldDefs, targets);
   }
+}
+
+/** Resolve a block's `fields:` config into the actual `FieldDef`s it selects,
+ * in settings order. */
+function resolveFields(
+  plugin: DayEchoPlugin,
+  fieldsConfig: string | string[] | undefined
+): FieldDef[] {
+  const defined = plugin.settings.dataFields;
+  const keys = parseFields(
+    fieldsConfig,
+    defined.map((f) => f.key)
+  );
+  const byKey = new Map(defined.map((f) => [f.key, f]));
+  return keys
+    .map((k) => byKey.get(k))
+    .filter((f): f is FieldDef => f !== undefined);
 }
 
 function paintBlock(
@@ -134,6 +160,7 @@ function paintBlock(
   ctx: MarkdownPostProcessorContext,
   block: InteractionBlock,
   tokens: string[],
+  fieldDefs: FieldDef[],
   targets: DayTarget[]
 ): void {
   // Clear any prior render so a re-paint starts from a clean slate (and the
@@ -141,8 +168,10 @@ function paintBlock(
   el.empty();
   el.removeClass("ei-block");
 
-  // A day is hidden once it's fully rated (both energy and mood present).
-  const pending = targets.filter((d) => d.energy === null || d.mood === null);
+  // A day is hidden once every one of this block's selected fields is filled.
+  // With zero fields selected, `values` is empty and no day is ever pending —
+  // that's the intended way to turn a block's content off.
+  const pending = targets.filter((d) => Object.values(d.values).some((v) => v === null));
 
   // Nothing left to rate — render nothing so the whole block disappears.
   if (pending.length === 0) return;
@@ -150,9 +179,9 @@ function paintBlock(
   el.addClass("ei-block");
 
   // Inline settings row (first child), shown/hidden by the gear button. Its open
-  // state survives the re-render triggered by writing the `date:` config back.
+  // state survives the re-render triggered by writing the config back.
   const key = sectionKey(ctx, el);
-  const row = renderSettingsRow(plugin, ctx, el, tokens);
+  const row = renderSettingsRow(plugin, ctx, el, tokens, fieldDefs);
   row.toggleClass("is-hidden", !(key !== null && openRows.has(key)));
 
   // Re-query the row at click time rather than capturing it: a reprocessed
@@ -177,7 +206,7 @@ function paintBlock(
   };
 
   for (const day of pending) {
-    renderCard(plugin, el, day, onCardComplete, block);
+    renderCard(plugin, el, day, fieldDefs, onCardComplete, block);
   }
 }
 
@@ -231,57 +260,79 @@ function injectSettingsButton(
 }
 
 /**
- * Render the inline day-picker row: a label plus today / yesterday chips. A chip
- * click flips its state and writes the new day set back into the block's `date:`
- * config. At least one chip must stay on, so deselecting the last one is blocked.
+ * Render the inline settings row: a day-chip subrow (today/yesterday) and a
+ * field-chip subrow (one chip per defined field). A day chip click flips its
+ * state and writes the new day set back into the block's `date:` config; a
+ * field chip click flips its membership in the block's `fields:` config.
+ * Unlike the day chips, field chips have no "keep at least one on" rule —
+ * deselecting every field is how a block's content is turned off.
  */
 function renderSettingsRow(
   plugin: DayEchoPlugin,
   ctx: MarkdownPostProcessorContext,
   el: HTMLElement,
-  tokens: string[]
+  tokens: string[],
+  fieldDefs: FieldDef[]
 ): HTMLElement {
   const row = el.createDiv({ cls: "ei-settings-row" });
-  row.createSpan({ cls: "ei-settings-label", text: t("interaction.settingsLabel") });
-  const chipsEl = row.createDiv({ cls: "ei-day-chips" });
 
-  const state: Record<"today" | "yesterday", boolean> = {
+  const daysSubrow = row.createDiv({ cls: "ei-settings-subrow" });
+  daysSubrow.createSpan({ cls: "ei-settings-label", text: t("interaction.settingsLabel") });
+  const dayChipsEl = daysSubrow.createDiv({ cls: "ei-chips" });
+
+  const dayState: Record<"today" | "yesterday", boolean> = {
     today: tokens.includes("today"),
     yesterday: tokens.includes("yesterday"),
   };
 
-  const commit = () => {
+  const commitDays = () => {
     const next: string[] = [];
-    if (state.today) next.push("today");
-    if (state.yesterday) next.push("yesterday");
-    void writeBlockDate(plugin, ctx, el, next);
+    if (dayState.today) next.push("today");
+    if (dayState.yesterday) next.push("yesterday");
+    void writeBlockConfig(plugin, ctx, el, "date", next);
   };
 
-  const build = (
+  const buildDayChip = (
     token: "today" | "yesterday",
     labelKey: "interaction.today" | "interaction.yesterday"
   ) => {
-    const chip = chipsEl.createEl("button", {
-      cls: "ei-day-chip",
-      text: t(labelKey),
-    });
-    chip.toggleClass("is-on", state[token]);
+    const chip = dayChipsEl.createEl("button", { cls: "ei-chip", text: t(labelKey) });
+    chip.toggleClass("is-on", dayState[token]);
     chip.addEventListener("click", () => {
       const other = token === "today" ? "yesterday" : "today";
       // Block turning off the last active chip — the block would vanish.
-      if (state[token] && !state[other]) {
+      if (dayState[token] && !dayState[other]) {
         chip.addClass("is-shake");
         window.setTimeout(() => chip.removeClass("is-shake"), 400);
         return;
       }
-      state[token] = !state[token];
-      chip.toggleClass("is-on", state[token]);
-      commit();
+      dayState[token] = !dayState[token];
+      chip.toggleClass("is-on", dayState[token]);
+      commitDays();
     });
   };
 
-  build("today", "interaction.today");
-  build("yesterday", "interaction.yesterday");
+  buildDayChip("today", "interaction.today");
+  buildDayChip("yesterday", "interaction.yesterday");
+
+  const fieldsSubrow = row.createDiv({ cls: "ei-settings-subrow" });
+  fieldsSubrow.createSpan({ cls: "ei-settings-label", text: t("interaction.fieldsLabel") });
+  const fieldChipsEl = fieldsSubrow.createDiv({ cls: "ei-chips" });
+
+  const allDefinedKeys = plugin.settings.dataFields.map((f) => f.key);
+  const selectedKeys = new Set(fieldDefs.map((f) => f.key));
+
+  for (const field of plugin.settings.dataFields) {
+    const chip = fieldChipsEl.createEl("button", { cls: "ei-chip", text: field.label });
+    chip.toggleClass("is-on", selectedKeys.has(field.key));
+    chip.addEventListener("click", () => {
+      if (selectedKeys.has(field.key)) selectedKeys.delete(field.key);
+      else selectedKeys.add(field.key);
+      chip.toggleClass("is-on", selectedKeys.has(field.key));
+      const next = allDefinedKeys.filter((k) => selectedKeys.has(k));
+      void writeBlockConfig(plugin, ctx, el, "fields", next);
+    });
+  }
 
   return row;
 }
@@ -297,14 +348,15 @@ function sectionKey(
 }
 
 /**
- * Rewrite the `date:` line inside this block's fences to reflect `tokens`,
- * leaving any other body lines untouched. No-ops if the section or file can't
- * be located.
+ * Rewrite a single config line (`date:` or `fields:`) inside this block's
+ * fences, leaving any other body lines untouched. No-ops if the section or
+ * file can't be located.
  */
-async function writeBlockDate(
+async function writeBlockConfig(
   plugin: DayEchoPlugin,
   ctx: MarkdownPostProcessorContext,
   el: HTMLElement,
+  key: "date" | "fields",
   tokens: string[]
 ): Promise<void> {
   const info = ctx.getSectionInfo(el);
@@ -320,7 +372,7 @@ async function writeBlockDate(
       // Body sits between the opening (lineStart) and closing (lineEnd) fences.
       const bodyStart = info.lineStart + 1;
       const body = lines.slice(bodyStart, info.lineEnd);
-      const newBody = upsertDateLine(body, value);
+      const newBody = upsertConfigLine(body, key, value);
       lines.splice(bodyStart, info.lineEnd - bodyStart, ...newBody);
       return lines.join("\n");
     });
@@ -329,13 +381,13 @@ async function writeBlockDate(
   }
 }
 
-/** Replace the existing `date:` line in a block body, or append one. */
-function upsertDateLine(body: string[], value: string): string[] {
-  const dateRe = /^\s*date\s*:/;
-  const idx = body.findIndex((line) => dateRe.test(line));
-  if (idx === -1) return [...body, `date: ${value}`];
+/** Replace the existing `key:` line in a block body, or append one. */
+function upsertConfigLine(body: string[], key: string, value: string): string[] {
+  const re = new RegExp(`^\\s*${key}\\s*:`);
+  const idx = body.findIndex((line) => re.test(line));
+  if (idx === -1) return [...body, `${key}: ${value}`];
   const next = [...body];
-  next[idx] = `date: ${value}`;
+  next[idx] = `${key}: ${value}`;
   return next;
 }
 
@@ -343,6 +395,7 @@ function renderCard(
   plugin: DayEchoPlugin,
   parent: HTMLElement,
   day: DayTarget,
+  fieldDefs: FieldDef[],
   onComplete: () => void,
   block: InteractionBlock
 ): void {
@@ -351,22 +404,21 @@ function renderCard(
   header.createDiv({ cls: "ei-card-label", text: day.label });
   const status = header.createDiv({ cls: "ei-status" });
 
-  let energy = day.energy;
-  let mood = day.mood;
+  const values = { ...day.values };
 
-  const save = (key: "energy" | "mood", value: number) => {
-    if (key === "energy") energy = value;
-    else mood = value;
+  const save = (key: string, value: number | boolean) => {
+    values[key] = value;
     // Our own write fires metadataCache/vault events; ignore them for a moment
     // so the block doesn't repaint over the in-progress card or its dismissal.
     block.suppressRefresh(2000);
     void (async () => {
       try {
-        await writeScores(plugin, day.filePath, { [key]: value });
+        await writeValues(plugin, day.filePath, { [key]: value });
         flashSaved(status);
-        // Once both scores are in, play the "saved" flash, then animate the
-        // card out before removing it from the layout.
-        if (energy !== null && mood !== null) {
+        // Once every selected field is filled, play the "saved" flash, then
+        // animate the card out before removing it from the layout.
+        const allFilled = Object.values(values).every((v) => v !== null);
+        if (allFilled) {
           window.setTimeout(() => dismissCard(card, onComplete), 900);
         }
       } catch (err: unknown) {
@@ -379,12 +431,26 @@ function renderCard(
     })();
   };
 
-  renderRatingField(card, t("interaction.energy"), day.energy, (v) =>
-    save("energy", v)
-  );
-  renderRatingField(card, t("interaction.mood"), day.mood, (v) =>
-    save("mood", v)
-  );
+  for (const field of fieldDefs) {
+    const current = day.values[field.key];
+    if (field.type === "number") {
+      renderRatingField(
+        card,
+        field.label,
+        typeof current === "number" ? current : null,
+        field.min ?? 1,
+        field.max ?? 5,
+        (v) => save(field.key, v)
+      );
+    } else {
+      renderBooleanField(
+        card,
+        field.label,
+        typeof current === "boolean" ? current : null,
+        (v) => save(field.key, v)
+      );
+    }
+  }
 }
 
 /**
@@ -446,23 +512,28 @@ function renderRatingField(
   parent: HTMLElement,
   label: string,
   initial: number | null,
+  min: number,
+  max: number,
   onChange: (v: number) => void
 ): void {
   const field = parent.createDiv({ cls: "ei-field" });
   field.createDiv({ cls: "ei-label", text: label });
   const dots = field.createDiv({ cls: "ei-dots" });
 
+  const values: number[] = [];
+  for (let v = min; v <= max; v++) values.push(v);
+
   const btns: HTMLElement[] = [];
-  for (let i = 1; i <= 5; i++) {
-    const btn = dots.createEl("button", { cls: "ei-dot", text: String(i) });
-    if (initial !== null && i < initial) btn.addClass("is-filled");
-    if (initial === i) btn.addClass("is-selected");
+  for (const v of values) {
+    const btn = dots.createEl("button", { cls: "ei-dot", text: String(v) });
+    if (initial !== null && v < initial) btn.addClass("is-filled");
+    if (initial === v) btn.addClass("is-selected");
     btns.push(btn);
   }
 
   btns.forEach((btn, idx) => {
     btn.addEventListener("click", () => {
-      const val = idx + 1;
+      const val = values[idx];
       btns.forEach((b, i) => {
         b.toggleClass("is-filled", i < idx);
         b.toggleClass("is-selected", i === idx);
@@ -472,34 +543,72 @@ function renderRatingField(
   });
 }
 
-async function writeScores(
+/** Two-button "是/否" field for a boolean value. Neither button is
+ * highlighted while `initial` is `null` (unanswered) — there's no forced
+ * choice, unlike the day chips. */
+function renderBooleanField(
+  parent: HTMLElement,
+  label: string,
+  initial: boolean | null,
+  onChange: (v: boolean) => void
+): void {
+  const field = parent.createDiv({ cls: "ei-field" });
+  field.createDiv({ cls: "ei-label", text: label });
+  const chips = field.createDiv({ cls: "ei-chips" });
+
+  const options: { value: boolean; text: string }[] = [
+    { value: true, text: t("interaction.yes") },
+    { value: false, text: t("interaction.no") },
+  ];
+
+  const btns = options.map((opt) => {
+    const chip = chips.createEl("button", { cls: "ei-chip", text: opt.text });
+    chip.toggleClass("is-on", initial === opt.value);
+    return chip;
+  });
+
+  btns.forEach((chip, idx) => {
+    chip.addEventListener("click", () => {
+      btns.forEach((b, i) => b.toggleClass("is-on", i === idx));
+      onChange(options[idx].value);
+    });
+  });
+}
+
+async function writeValues(
   plugin: DayEchoPlugin,
   filePath: string,
-  scores: Record<string, number>
+  values: Record<string, number | boolean>
 ): Promise<void> {
   const app = plugin.app;
   const existing = app.vault.getAbstractFileByPath(filePath);
 
   if (!(existing instanceof TFile)) {
-    const folder = filePath.lastIndexOf("/") > 0
-      ? filePath.substring(0, filePath.lastIndexOf("/"))
-      : "";
+    const folder =
+      filePath.lastIndexOf("/") > 0 ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
     if (folder && !app.vault.getAbstractFileByPath(folder)) {
       await app.vault.createFolder(folder);
     }
-    const fm = Object.entries(scores).map(([k, v]) => `${k}: ${v}`).join("\n");
+    const fm = Object.entries(values)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
     const file = await app.vault.create(filePath, `---\n${fm}\n---\n`);
     // Fire-and-forget so the IP / weather lookups never delay the interaction save.
     void plugin.recordContext(file);
     return;
   }
 
-  await app.vault.process(existing, (content) => patchFrontmatter(content, scores));
+  await app.vault.process(existing, (content) => patchFrontmatter(content, values));
 }
 
-function patchFrontmatter(content: string, values: Record<string, number>): string {
-  const fmLine = (entries: Record<string, number>) =>
-    Object.entries(entries).map(([k, v]) => `${k}: ${v}`).join("\n");
+function patchFrontmatter(
+  content: string,
+  values: Record<string, number | boolean>
+): string {
+  const fmLine = (entries: Record<string, number | boolean>) =>
+    Object.entries(entries)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
 
   if (!content.startsWith("---")) {
     return `---\n${fmLine(values)}\n---\n${content}`;
@@ -536,26 +645,38 @@ function parseConfig(source: string): BlockConfig {
   return {};
 }
 
-function buildTarget(plugin: DayEchoPlugin, token: string): DayTarget {
+function buildTarget(
+  plugin: DayEchoPlugin,
+  token: string,
+  fieldDefs: FieldDef[]
+): DayTarget {
   const dateStr = resolveDate(token);
   const filePath = buildFilePath(plugin, dateStr);
-  const { energy, mood } = readScores(plugin, filePath);
-  return { token, dateStr, label: labelFor(token, dateStr), filePath, energy, mood };
+  const values = readValues(plugin, filePath, fieldDefs);
+  return { token, dateStr, label: labelFor(token, dateStr), filePath, values };
 }
 
-function readScores(
+function readValues(
   plugin: DayEchoPlugin,
-  filePath: string
-): { energy: number | null; mood: number | null } {
+  filePath: string,
+  fieldDefs: FieldDef[]
+): Record<string, FieldValue> {
   const file = plugin.app.vault.getAbstractFileByPath(filePath);
-  if (!(file instanceof TFile)) return { energy: null, mood: null };
-  const fm = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
-  const energy = fm?.["energy"];
-  const mood = fm?.["mood"];
-  return {
-    energy: typeof energy === "number" ? energy : null,
-    mood: typeof mood === "number" ? mood : null,
-  };
+  const fm =
+    file instanceof TFile
+      ? plugin.app.metadataCache.getFileCache(file)?.frontmatter
+      : undefined;
+
+  const values: Record<string, FieldValue> = {};
+  for (const field of fieldDefs) {
+    const raw = fm?.[field.key];
+    if (field.type === "number") {
+      values[field.key] = typeof raw === "number" ? raw : null;
+    } else {
+      values[field.key] = typeof raw === "boolean" ? raw : null;
+    }
+  }
+  return values;
 }
 
 function labelFor(token: string, dateStr: string): string {

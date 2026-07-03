@@ -975,8 +975,8 @@ body.day-echo-active .status-bar {
 
 .ei-settings-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
@@ -985,18 +985,25 @@ body.day-echo-active .status-bar {
   display: none;
 }
 
+.ei-settings-subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .ei-settings-label {
   font-size: var(--font-ui-small);
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.ei-day-chips {
+.ei-chips {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.ei-day-chip {
+.ei-chip {
   padding: 4px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-s);
@@ -1007,19 +1014,19 @@ body.day-echo-active .status-bar {
   transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.ei-day-chip:hover {
+.ei-chip:hover {
   border-color: var(--interactive-accent);
   color: var(--text-normal);
   box-shadow: none;
 }
 
-.ei-day-chip.is-on {
+.ei-chip.is-on {
   border-color: var(--interactive-accent);
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.ei-day-chip.is-shake {
+.ei-chip.is-shake {
   animation: ei-shake 0.4s ease;
 }
 
