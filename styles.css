@@ -798,6 +798,18 @@ body.day-echo-active .status-bar {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow: hidden;
+}
+
+.ei-block.is-leaving {
+  max-height: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 300ms ease, opacity 220ms ease,
+    padding 300ms ease, border-width 300ms ease;
 }
 
 .ei-card {

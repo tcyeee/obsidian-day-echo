@@ -172,8 +172,7 @@ function paintBlock(
   const onCardComplete = () => {
     remaining--;
     if (remaining === 0) {
-      el.empty();
-      el.removeClass("ei-block");
+      dismissBlock(el);
     }
   };
 
@@ -386,6 +385,29 @@ function renderCard(
   renderRatingField(card, t("interaction.mood"), day.mood, (v) =>
     save("mood", v)
   );
+}
+
+/**
+ * Fade + collapse the whole block out of view once every card is dismissed,
+ * mirroring `dismissCard` so the container's own border/gear button doesn't
+ * just vanish the instant the last card finishes its animation.
+ */
+function dismissBlock(el: HTMLElement): void {
+  el.style.maxHeight = `${el.scrollHeight}px`;
+  void el.offsetHeight;
+  el.addClass("is-leaving");
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    el.empty();
+    el.removeClass("ei-block");
+    el.removeClass("is-leaving");
+    el.style.maxHeight = "";
+  };
+  el.addEventListener("transitionend", finish, { once: true });
+  window.setTimeout(finish, 500);
 }
 
 /** Fade + collapse the card out of view, then remove it and notify. */
