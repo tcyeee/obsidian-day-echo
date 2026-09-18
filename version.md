@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Fixed several Obsidian submission-bot lint warnings: popout-window-unsafe timers and type checks, a direct inline-style assignment, a release workflow that always published as a draft, a build-provenance attestation missing manifest.json, and gaps in the version-compatibility history. 修复多项 Obsidian 提交审核机器人告警：不兼容弹出窗口的定时器与类型判断、直接内联样式赋值、发布流程始终停留在草稿状态、构建溯源认证缺少 manifest.json，以及版本兼容性历史记录中的缺口。
+
 ## 0.1.4
 
 - Added an echo-interaction block you can insert from the editor menu: one card per day (today/yesterday by default, or a custom date list), rating auto-saves on click, and finished cards animate out and collapse the block once every day is rated. 新增可从编辑器菜单插入的回声互动块：默认显示今天/昨天（或自定义日期列表），点击评分即自动保存，评完的卡片会播放动画退出并在全部完成后折叠整个区块。
