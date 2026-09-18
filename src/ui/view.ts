@@ -477,7 +477,7 @@ export class DayEchoView extends ItemView {
     const ascending = this.plugin.settings.sortAscending;
     this.spacerEl?.toggleClass("de-hidden", ascending);
     const todayEntry = ascending ? null : this.findToday();
-    if (!ascending && !todayEntry && this.zoom === "month") this.renderTodayCta();
+    if (!ascending && !todayEntry && this.zoom === "month") this.renderTodayCta(this.listEl);
 
     // Today's entry gets its own section; drop it from the grouped flow so
     // it does not appear twice.
@@ -658,8 +658,8 @@ export class DayEchoView extends ItemView {
    * yet: a call-to-action card that creates and opens today's note. (An
    * existing diary instead flows into the columns under a "今天" marker.)
    */
-  private renderTodayCta(): void {
-    const section = this.listEl!.createDiv({
+  private renderTodayCta(listEl: HTMLElement): void {
+    const section = listEl.createDiv({
       cls: "de-section de-today-section",
     });
     section.createDiv({ cls: "de-sec-dot de-today-dot" });

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type DayEchoPlugin from "./main";
 import { ZoomLevel } from "./types";
 import { t, type LanguageSetting } from "./i18n";
@@ -36,13 +36,45 @@ export class DayEchoSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    this.buildUI();
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    if (!isDailyNotesPluginEnabled(this.app)) {
+      return [{ name: "", desc: t("settings.dailyNotesRequired") }];
+    }
+
+    return [
+      {
+        name: t("settings.section.general"),
+        render: (setting) =>
+          this.renderSection(setting, t("settings.section.general"), true, (container) =>
+            this.buildGeneralSettings(container)
+          ),
+      },
+      {
+        name: t("settings.section.basic"),
+        render: (setting) =>
+          this.renderSection(setting, t("settings.section.basic"), true, (container) =>
+            this.buildBasicSettings(container)
+          ),
+      },
+      {
+        name: t("settings.section.advanced"),
+        render: (setting) =>
+          this.renderSection(setting, t("settings.section.advanced"), false, (container) =>
+            this.buildAdvancedSettings(container)
+          ),
+      },
+    ];
   }
 
-  /** Build a collapsible `<details>` section with a heading summary. */
-  private createSection(title: string, defaultOpen: boolean): HTMLDetailsElement {
-    const details = this.containerEl.createEl("details", {
+  /** Replace the framework-rendered row with a collapsible `<details>` section. */
+  private renderSection(
+    setting: Setting,
+    title: string,
+    defaultOpen: boolean,
+    fill: (container: HTMLElement) => void
+  ): void {
+    setting.settingEl.empty();
+    const details = setting.settingEl.createEl("details", {
       cls: "day-echo-settings-section",
     });
     details.open = defaultOpen;
@@ -50,7 +82,7 @@ export class DayEchoSettingTab extends PluginSettingTab {
       cls: "day-echo-settings-section-summary",
     });
     new Setting(summary).setName(title).setHeading();
-    return details;
+    fill(details);
   }
 
   /** Segmented newest-first/oldest-first control, in place of a plain toggle. */
@@ -87,18 +119,8 @@ export class DayEchoSettingTab extends PluginSettingTab {
     sync();
   }
 
-  private buildUI(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    if (!isDailyNotesPluginEnabled(this.app)) {
-      new Setting(containerEl).setDesc(t("settings.dailyNotesRequired"));
-      return;
-    }
-
-    const general = this.createSection(t("settings.section.general"), true);
-
-    new Setting(general)
+  private buildGeneralSettings(container: HTMLElement): void {
+    new Setting(container)
       .setName(t("settings.language.name"))
       .addDropdown((dropdown) =>
         dropdown
@@ -110,15 +132,15 @@ export class DayEchoSettingTab extends PluginSettingTab {
             this.plugin.settings.language = value as LanguageSetting;
             await this.plugin.saveSettings();
             this.plugin.refreshLanguage();
-            this.buildUI();
+            this.update();
           })
       );
+  }
 
-    const basic = this.createSection(t("settings.section.basic"), true);
+  private buildBasicSettings(container: HTMLElement): void {
+    this.buildSortOrderSetting(container);
 
-    this.buildSortOrderSetting(basic);
-
-    new Setting(basic)
+    new Setting(container)
       .setName(t("settings.diaryNav.name"))
       .addToggle((toggle) =>
         toggle
@@ -129,17 +151,17 @@ export class DayEchoSettingTab extends PluginSettingTab {
             this.plugin.diaryNav.refresh();
           })
       );
+  }
 
-    const advanced = this.createSection(t("settings.section.advanced"), false);
-
-    new Setting(advanced)
+  private buildAdvancedSettings(container: HTMLElement): void {
+    new Setting(container)
       .setName(t("settings.folder.name"))
       .setDesc(t("settings.folder.desc"))
       .addText((text) =>
         text.setValue(this.plugin.settings.dailyFolder).setDisabled(true)
       );
 
-    new Setting(advanced)
+    new Setting(container)
       .setName(t("settings.location.name"))
       .setDesc(t("settings.location.desc"))
       .addToggle((toggle) =>
