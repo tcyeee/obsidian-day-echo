@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type DayEchoPlugin from "./main";
 import { ZoomLevel } from "./types";
 import { t, type LanguageSetting } from "./i18n";
+import { isDailyNotesPluginEnabled } from "./core/daily-notes-plugin";
 
 export interface DayEchoSettings {
   /** Folder scanned for daily notes. */
@@ -39,13 +40,66 @@ export class DayEchoSettingTab extends PluginSettingTab {
     this.buildUI();
   }
 
+  /** Build a collapsible `<details>` section with a heading summary. */
+  private createSection(title: string, defaultOpen: boolean): HTMLDetailsElement {
+    const details = this.containerEl.createEl("details", {
+      cls: "day-echo-settings-section",
+    });
+    details.open = defaultOpen;
+    const summary = details.createEl("summary", {
+      cls: "day-echo-settings-section-summary",
+    });
+    new Setting(summary).setName(title).setHeading();
+    return details;
+  }
+
+  /** Segmented newest-first/oldest-first control, in place of a plain toggle. */
+  private buildSortOrderSetting(container: HTMLElement): void {
+    let newestBtn: HTMLButtonElement;
+    let oldestBtn: HTMLButtonElement;
+    const sync = () => {
+      const ascending = this.plugin.settings.sortAscending;
+      newestBtn.toggleClass("is-active", !ascending);
+      oldestBtn.toggleClass("is-active", ascending);
+    };
+    const select = async (ascending: boolean) => {
+      this.plugin.settings.sortAscending = ascending;
+      await this.plugin.saveSettings();
+      sync();
+    };
+
+    new Setting(container)
+      .setName(t("settings.sortOrder.name"))
+      .addButton((btn) => {
+        newestBtn = btn.buttonEl;
+        btn
+          .setButtonText(t("settings.sortOrder.newestFirst"))
+          .setClass("day-echo-sort-btn")
+          .onClick(() => select(false));
+      })
+      .addButton((btn) => {
+        oldestBtn = btn.buttonEl;
+        btn
+          .setButtonText(t("settings.sortOrder.oldestFirst"))
+          .setClass("day-echo-sort-btn")
+          .onClick(() => select(true));
+      });
+    sync();
+  }
+
   private buildUI(): void {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl)
+    if (!isDailyNotesPluginEnabled(this.app)) {
+      new Setting(containerEl).setDesc(t("settings.dailyNotesRequired"));
+      return;
+    }
+
+    const general = this.createSection(t("settings.section.general"), true);
+
+    new Setting(general)
       .setName(t("settings.language.name"))
-      .setDesc(t("settings.language.desc"))
       .addDropdown((dropdown) =>
         dropdown
           .addOption("auto", t("settings.language.auto"))
@@ -60,46 +114,32 @@ export class DayEchoSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(containerEl)
-      .setName(t("settings.folder.name"))
-      .setDesc(t("settings.folder.desc"))
-      .addText((text) =>
-        text
-          .setPlaceholder(t("settings.folder.placeholder"))
-          .setValue(this.plugin.settings.dailyFolder)
-          .onChange(async (value) => {
-            this.plugin.settings.dailyFolder = value.trim();
-            await this.plugin.saveSettings();
-          })
-      );
+    const basic = this.createSection(t("settings.section.basic"), true);
 
-    new Setting(containerEl)
-      .setName(t("settings.oldestFirst.name"))
-      .setDesc(t("settings.oldestFirst.desc"))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.sortAscending)
-          .onChange(async (value) => {
-            this.plugin.settings.sortAscending = value;
-            await this.plugin.saveSettings();
-          })
-      );
+    this.buildSortOrderSetting(basic);
 
-    new Setting(containerEl)
+    new Setting(basic)
       .setName(t("settings.diaryNav.name"))
-      .setDesc(t("settings.diaryNav.desc"))
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.showDiaryNav)
           .onChange(async (value) => {
             this.plugin.settings.showDiaryNav = value;
             await this.plugin.saveSettings();
-            if (value) this.plugin.diaryNav.refresh();
-            else this.plugin.diaryNav.detachAll();
+            this.plugin.diaryNav.refresh();
           })
       );
 
-    new Setting(containerEl)
+    const advanced = this.createSection(t("settings.section.advanced"), false);
+
+    new Setting(advanced)
+      .setName(t("settings.folder.name"))
+      .setDesc(t("settings.folder.desc"))
+      .addText((text) =>
+        text.setValue(this.plugin.settings.dailyFolder).setDisabled(true)
+      );
+
+    new Setting(advanced)
       .setName(t("settings.location.name"))
       .setDesc(t("settings.location.desc"))
       .addToggle((toggle) =>

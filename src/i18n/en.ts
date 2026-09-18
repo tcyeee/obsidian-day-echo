@@ -7,18 +7,21 @@
  */
 export const en = {
   // Settings tab
+  "settings.dailyNotesRequired":
+    "Day Echo requires Obsidian's core \"Daily notes\" plugin. Enable it under Settings → Core plugins, then reopen this tab.",
+  "settings.section.general": "General",
+  "settings.section.basic": "Basic",
+  "settings.section.advanced": "Advanced (Beta)",
   "settings.folder.name": "Daily notes folder",
-  "settings.folder.desc": "Folder scanned for daily notes (relative to the vault root).",
-  "settings.folder.placeholder": "daily",
-  "settings.oldestFirst.name": "Oldest first",
-  "settings.oldestFirst.desc": "Default sort direction. Off shows the newest entries at the top.",
-  "settings.diaryNav.name": "Show diary navigation",
-  "settings.diaryNav.desc": "Show a prev/next bar on top of open daily notes.",
+  "settings.folder.desc": "Folder scanned for daily notes. Synced from the core Daily notes plugin's own folder setting.",
+  "settings.sortOrder.name": "Timeline sort order",
+  "settings.sortOrder.newestFirst": "Newest first",
+  "settings.sortOrder.oldestFirst": "Oldest first",
+  "settings.diaryNav.name": "Show diary bottom navigation",
   "settings.location.name": "Record location and weather on creation",
   "settings.location.desc":
     "When creating today's note, look up your city and coordinates by IP and write them to the frontmatter, record today's weather and temperature/humidity, and back-fill yesterday's note with its actual weather. Requires a network connection; sends your IP to ip-api.com and queries open-meteo.com for weather.",
   "settings.language.name": "Language",
-  "settings.language.desc": "Display language for Day Echo. Auto follows Obsidian's language.",
   "settings.language.auto": "Auto",
 
   // Timeline view
@@ -54,6 +57,10 @@ export const en = {
   "interaction.insertMenu": "Insert echo interaction",
   "interaction.toggleSettings": "Display settings",
   "interaction.settingsLabel": "Show:",
+
+  // Startup
+  "notice.dailyNotesRequired":
+    "Day Echo needs the core \"Daily notes\" plugin enabled to start.",
 } as const;
 
 /** The full set of message keys, derived from the English catalog. */
