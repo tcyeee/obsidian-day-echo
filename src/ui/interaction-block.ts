@@ -159,7 +159,7 @@ function paintBlock(
   // block keeps its gear button (and this closure) while the row is rebuilt.
   injectSettingsButton(plugin, el, () => {
     const current = el.querySelector(":scope > .ei-settings-row");
-    if (!(current instanceof HTMLElement)) return;
+    if (!current?.instanceOf(HTMLElement)) return;
     const opening = current.hasClass("is-hidden");
     current.toggleClass("is-hidden", !opening);
     const k = sectionKey(ctx, el);
@@ -199,10 +199,10 @@ function injectSettingsButton(
     const editBtn =
       parent?.querySelector(":scope > .edit-block-button") ??
       el.querySelector(":scope > .edit-block-button");
-    if (!(editBtn instanceof HTMLElement)) return false;
+    if (!editBtn?.instanceOf(HTMLElement)) return false;
     // Don't double-inject if this element gets reprocessed.
     if (
-      editBtn.previousElementSibling instanceof HTMLElement &&
+      editBtn.previousElementSibling?.instanceOf(HTMLElement) &&
       editBtn.previousElementSibling.hasClass("ei-settings-btn")
     ) {
       return true;
@@ -325,7 +325,7 @@ async function writeBlockDate(
       lines.splice(bodyStart, info.lineEnd - bodyStart, ...newBody);
       return lines.join("\n");
     });
-  } catch (err) {
+  } catch (err: unknown) {
     new Notice(t("interaction.saveFailed", { error: String(err) }));
   }
 }
@@ -370,7 +370,7 @@ function renderCard(
         if (energy !== null && mood !== null) {
           window.setTimeout(() => dismissCard(card, onComplete), 900);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         const msg = t("interaction.saveFailed", { error: String(err) });
         status.setText(msg);
         status.removeClass("ei-status--ok");
@@ -391,7 +391,7 @@ function renderCard(
 /** Fade + collapse the card out of view, then remove it and notify. */
 function dismissCard(card: HTMLElement, onComplete: () => void): void {
   // Pin the current height so the collapse transition has something to animate.
-  card.style.maxHeight = `${card.scrollHeight}px`;
+  card.setCssStyles({ maxHeight: `${card.scrollHeight}px` });
   // Force a reflow so the starting max-height is committed before we shrink it.
   void card.offsetHeight;
   card.addClass("is-leaving");

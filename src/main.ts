@@ -173,7 +173,7 @@ export default class DayEchoPlugin extends Plugin {
         });
       }
       await this.backfillYesterday();
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("Day Echo: failed to record creation context", err);
     }
   }

@@ -34,6 +34,7 @@ jobs:
         with:
           subject-path: |
             main.js
+            manifest.json
             styles.css
 
       - name: Create release
@@ -47,7 +48,21 @@ jobs:
             extra_files="styles.css"
           fi
 
-          gh release create "$tag" \
-            --title="$tag" \
-            --draft \
-            main.js manifest.json $extra_files
+          # Force a real fetch of the tag object by ref name: actions/checkout
+          # leaves a lightweight ref pointing at the commit, whose %(contents)
+          # is the commit message, not the annotated tag's own message.
+          git fetch origin "refs/tags/$tag:refs/tags/$tag" --force
+          notes="$(git tag -l --format='%(contents)' "$tag")"
+
+          if [ -n "$notes" ]; then
+            echo "$notes" > /tmp/release-notes.md
+            gh release create "$tag" \
+              --title="$tag" \
+              --notes-file /tmp/release-notes.md \
+              main.js manifest.json $extra_files
+          else
+            gh release create "$tag" \
+              --title="$tag" \
+              --generate-notes \
+              main.js manifest.json $extra_files
+          fi

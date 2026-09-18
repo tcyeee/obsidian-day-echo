@@ -49,7 +49,7 @@ export interface GeoResult {
 /** Reject after `ms` so a hung request never blocks the caller indefinitely. */
 function timeout(ms: number): Promise<never> {
   return new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("geolocation request timed out")), ms)
+    window.setTimeout(() => reject(new Error("geolocation request timed out")), ms)
   );
 }
 

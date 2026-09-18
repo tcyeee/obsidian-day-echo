@@ -698,7 +698,7 @@ export class DayEchoView extends ItemView {
       await this.app.workspace.getLeaf(false).openFile(file);
       // Fire-and-forget so the IP / weather lookups never delay opening the note.
       if (created) void this.plugin.recordContext(file);
-    } catch (err) {
+    } catch (err: unknown) {
       new Notice(t("view.createFailed", { error: String(err) }));
     }
   }
