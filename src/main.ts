@@ -1,8 +1,12 @@
-import { Plugin, TAbstractFile, TFile } from "obsidian";
+import { Notice, Plugin, TAbstractFile, TFile } from "obsidian";
 import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./ui/view";
 import { fetchLocation } from "./core/geolocation";
 import { fetchWeather, type WeatherResult } from "./core/weather";
 import { dailyNotePath } from "./core/daily-note";
+import {
+  getDailyNotesFolder,
+  isDailyNotesPluginEnabled,
+} from "./core/daily-notes-plugin";
 import { DiaryNav } from "./ui/diary-nav";
 import { registerInteractionBlock } from "./ui/interaction-block";
 import { registerInsertMenu } from "./ui/insert-menu";
@@ -11,7 +15,7 @@ import {
   DEFAULT_SETTINGS,
   DayEchoSettingTab,
 } from "./settings";
-import { setLocale } from "./i18n";
+import { t, setLocale } from "./i18n";
 
 export default class DayEchoPlugin extends Plugin {
   settings: DayEchoSettings;
@@ -21,6 +25,14 @@ export default class DayEchoPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
     setLocale(this.settings.language);
+
+    if (!isDailyNotesPluginEnabled(this.app)) {
+      new Notice(t("notice.dailyNotesRequired"));
+      this.addSettingTab(new DayEchoSettingTab(this.app, this));
+      return;
+    }
+    this.settings.dailyFolder = getDailyNotesFolder(this.app);
+    await this.saveSettings();
 
     this.registerView(
       VIEW_TYPE_DAY_ECHO,

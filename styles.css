@@ -1023,3 +1023,28 @@ body.day-echo-active .status-bar {
   20%, 60% { transform: translateX(-4px); }
   40%, 80% { transform: translateX(4px); }
 }
+
+.day-echo-settings-section-summary {
+  cursor: pointer;
+  list-style: revert;
+}
+
+.day-echo-settings-section-summary::marker {
+  color: var(--text-muted);
+}
+
+.day-echo-settings-section-summary .setting-item {
+  display: inline-flex;
+  border-top: none;
+  padding-top: 0;
+}
+
+.day-echo-sort-btn.is-active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.day-echo-sort-btn.is-active:hover {
+  background-color: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}

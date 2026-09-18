@@ -3,18 +3,21 @@ import type { Messages } from "./en";
 /** Simplified Chinese message catalog. Typed against the English key set. */
 export const zh: Messages = {
   // Settings tab
+  "settings.dailyNotesRequired":
+    "Day Echo 需要启用 Obsidian 的核心插件「日记」。请在 设置 → 核心插件 中启用后，重新打开此设置页。",
+  "settings.section.general": "通用",
+  "settings.section.basic": "基础",
+  "settings.section.advanced": "高级 (Beta)",
   "settings.folder.name": "日记文件夹",
-  "settings.folder.desc": "扫描日记的文件夹（相对于库的根目录）。",
-  "settings.folder.placeholder": "daily",
-  "settings.oldestFirst.name": "最早在前",
-  "settings.oldestFirst.desc": "默认排序方向。关闭时最新的日记显示在顶部。",
-  "settings.diaryNav.name": "显示日记导航",
-  "settings.diaryNav.desc": "在打开的日记顶部显示上一篇 / 下一篇导航条。",
+  "settings.folder.desc": "扫描日记的文件夹，与核心「日记」插件的文件夹设置保持同步。",
+  "settings.sortOrder.name": "时间线排序方式",
+  "settings.sortOrder.newestFirst": "时间倒序",
+  "settings.sortOrder.oldestFirst": "时间正序",
+  "settings.diaryNav.name": "显示日记底部导航",
   "settings.location.name": "创建时记录位置与天气",
   "settings.location.desc":
     "创建今天的日记时，通过 IP 查询你所在的城市与坐标并写入 frontmatter，同时记录当天天气与温湿度，并用实测值回填昨天日记的天气。需要联网，会把你的 IP 发送给 ip-api.com，并向 open-meteo.com 查询天气。",
   "settings.language.name": "语言",
-  "settings.language.desc": "Day Echo 的显示语言。“自动”跟随 Obsidian 的界面语言。",
   "settings.language.auto": "自动",
 
   // Timeline view
@@ -50,4 +53,7 @@ export const zh: Messages = {
   "interaction.insertMenu": "插入互动卡片",
   "interaction.toggleSettings": "显示设置",
   "interaction.settingsLabel": "显示：",
+
+  // Startup
+  "notice.dailyNotesRequired": "Day Echo 需要启用核心「日记」插件才能启动。",
 };
