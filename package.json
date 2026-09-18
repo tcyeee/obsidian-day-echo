@@ -1,6 +1,6 @@
 {
   "name": "obsidian-day-echo",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "packageManager": "pnpm@11.5.2",
   "description": "Gather all your daily notes into one vertical timeline view.",
   "main": "main.js",
