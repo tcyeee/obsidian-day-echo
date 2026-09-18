@@ -747,47 +747,36 @@ body.day-echo-active .status-bar {
 
 /* ===== Diary prev/next navigation ===== */
 
-/* Flex column so the injected bar sits below the editor without overflowing it */
+/* Positioning context for the overlaid nav pills */
 .view-content.de-has-nav {
-  display: flex;
-  flex-direction: column;
-}
-
-.view-content.de-has-nav > .markdown-source-view,
-.view-content.de-has-nav > .markdown-reading-view {
-  flex: 1 1 0;
-  min-height: 0;
+  position: relative;
 }
 
 .de-nav {
-  flex: 0 0 auto;
+  position: absolute;
+  bottom: 16px;
+  left: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 12px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-/* Placeholder span keeps a lone button on its own half */
-.de-nav > span {
-  flex: 1 1 0;
+  gap: 8px;
+  z-index: 1;
 }
 
 .de-nav-btn {
-  flex: 1 1 0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 14px 20px;
-  font-size: var(--font-ui-large);
-  font-weight: var(--font-semibold);
-  color: var(--text-normal);
+  gap: 4px;
+  padding: 6px 14px;
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
   text-decoration: none;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
+  border-radius: 999px;
+  box-shadow: var(--shadow-s);
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .de-nav-btn:hover {

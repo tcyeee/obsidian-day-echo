@@ -5,8 +5,10 @@ import { t } from "../i18n";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const NAV_CLS = "de-nav";
-/** Marker on `.view-content` switching it to flex column while a nav bar is present. */
+/** Marker on `.view-content` establishing the positioning context for the overlay. */
 const HOST_CLS = "de-has-nav";
+/** Editor/preview sizer whose left edge marks where the note's text actually starts. */
+const CONTENT_SIZER_SELECTOR = ".cm-sizer, .markdown-preview-sizer";
 
 export interface DiaryNeighbors<T> {
   prev: T | null;
@@ -32,23 +34,27 @@ export function findNeighbors<T extends { basename: string }>(
   };
 }
 
-/** Injects a prev/next bar below the content of every Markdown view showing a daily note. */
+/** Overlays a prev/next pill pair in the bottom-left corner of daily-note views. */
 export class DiaryNav {
+  private observers = new Map<HTMLElement, ResizeObserver>();
+
   constructor(private plugin: DayEchoPlugin) {}
 
-  /** Re-render the nav bar on all open Markdown leaves; idempotent. */
+  /** Re-render the nav overlay on all open Markdown leaves; idempotent. */
   refresh(): void {
     for (const leaf of this.plugin.app.workspace.getLeavesOfType("markdown")) {
       this.render(leaf.view as MarkdownView);
     }
   }
 
-  /** Remove every injected bar, e.g. on unload or when the setting is off. */
+  /** Remove every injected overlay, e.g. on unload or when the setting is off. */
   detachAll(): void {
+    for (const [content, observer] of this.observers) {
+      observer.disconnect();
+      content.removeClass(HOST_CLS);
+    }
+    this.observers.clear();
     activeDocument.querySelectorAll(`.${NAV_CLS}`).forEach((el) => el.remove());
-    activeDocument
-      .querySelectorAll(`.${HOST_CLS}`)
-      .forEach((el) => el.removeClass(HOST_CLS));
   }
 
   private render(view: MarkdownView): void {
@@ -57,6 +63,8 @@ export class DiaryNav {
     );
     if (!content) return;
     content.querySelector(`:scope > .${NAV_CLS}`)?.remove();
+    this.observers.get(content)?.disconnect();
+    this.observers.delete(content);
     content.removeClass(HOST_CLS);
 
     const file = view.file;
@@ -66,23 +74,41 @@ export class DiaryNav {
     if (!prev && !next) return;
 
     const nav = createDiv({ cls: NAV_CLS });
-    if (prev) this.button(nav, view, prev, `← ${prev.basename}`, t("nav.prev"));
-    else nav.createSpan();
-    if (next) this.button(nav, view, next, `${next.basename} →`, t("nav.next"));
-    else nav.createSpan();
+    if (prev) this.button(nav, view, prev, "←", t("nav.prev"));
+    if (next) this.button(nav, view, next, "→", t("nav.next"));
     content.addClass(HOST_CLS);
     content.appendChild(nav);
+
+    const alignNav = () => this.alignLeft(content, nav);
+    alignNav();
+    const observer = new ResizeObserver(alignNav);
+    observer.observe(content);
+    this.observers.set(content, observer);
+  }
+
+  /** Pin `nav`'s left edge to the note's own text margin, so it lines up with the content. */
+  private alignLeft(content: HTMLElement, nav: HTMLElement): void {
+    const sizer = content.querySelector<HTMLElement>(CONTENT_SIZER_SELECTOR);
+    if (!sizer) return;
+    const offset = sizer.getBoundingClientRect().left -
+      content.getBoundingClientRect().left;
+    nav.style.left = `${Math.max(offset, 0)}px`;
   }
 
   private button(
     nav: HTMLElement,
     view: MarkdownView,
     target: TFile,
-    text: string,
+    arrow: string,
     label: string
   ): void {
-    const btn = nav.createEl("a", { cls: "de-nav-btn", text });
-    btn.setAttribute("aria-label", label);
+    const btn = nav.createEl("a", {
+      cls: "de-nav-btn",
+      text: `${arrow} ${target.basename}`,
+    });
+    const title = `${label}: ${target.basename}`;
+    btn.setAttribute("aria-label", title);
+    btn.setAttribute("title", title);
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       void view.leaf.openFile(target);
