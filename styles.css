@@ -817,10 +817,9 @@ body.day-echo-active .status-bar {
 }
 
 .ei-card.is-leaving {
-  /* !important required: dismissCard() pins an inline max-height (via
-     setCssStyles) before this class is added, and inline styles outrank
-     any class selector regardless of specificity. */
-  max-height: 0 !important;
+  /* max-height is collapsed via an inline style set in dismissCard(),
+     matching the inline max-height it pins beforehand — no class-level
+     override needed here. */
   margin: 0;
   padding-top: 0;
   border-top-width: 0;
