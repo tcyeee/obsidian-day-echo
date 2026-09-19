@@ -43,50 +43,87 @@ export class DayEchoSettingTab extends PluginSettingTab {
 
     return [
       {
-        name: t("settings.section.general"),
-        render: (setting) =>
-          this.renderSection(setting, t("settings.section.general"), true, (container) =>
-            this.buildGeneralSettings(container)
-          ),
+        type: "group",
+        heading: t("settings.section.general"),
+        items: [
+          {
+            name: t("settings.language.name"),
+            render: (setting: Setting) => {
+              setting.addDropdown((dropdown) =>
+                dropdown
+                  .addOption("auto", t("settings.language.auto"))
+                  .addOption("zh", "中文")
+                  .addOption("en", "English")
+                  .setValue(this.plugin.settings.language)
+                  .onChange(async (value) => {
+                    this.plugin.settings.language = value as LanguageSetting;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshLanguage();
+                    this.update();
+                  })
+              );
+            },
+          },
+        ],
       },
       {
-        name: t("settings.section.basic"),
-        render: (setting) =>
-          this.renderSection(setting, t("settings.section.basic"), true, (container) =>
-            this.buildBasicSettings(container)
-          ),
+        type: "group",
+        heading: t("settings.section.basic"),
+        items: [
+          {
+            name: t("settings.sortOrder.name"),
+            render: (setting: Setting) => this.buildSortOrderSetting(setting),
+          },
+          {
+            name: t("settings.diaryNav.name"),
+            render: (setting: Setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.showDiaryNav)
+                  .onChange(async (value) => {
+                    this.plugin.settings.showDiaryNav = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.diaryNav.refresh();
+                  })
+              );
+            },
+          },
+        ],
       },
       {
+        type: "page",
         name: t("settings.section.advanced"),
-        render: (setting) =>
-          this.renderSection(setting, t("settings.section.advanced"), false, (container) =>
-            this.buildAdvancedSettings(container)
-          ),
+        items: [
+          {
+            name: t("settings.folder.name"),
+            desc: t("settings.folder.desc"),
+            render: (setting: Setting) => {
+              setting.addText((text) =>
+                text.setValue(this.plugin.settings.dailyFolder).setDisabled(true)
+              );
+            },
+          },
+          {
+            name: t("settings.location.name"),
+            desc: t("settings.location.desc"),
+            render: (setting: Setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.recordLocation)
+                  .onChange(async (value) => {
+                    this.plugin.settings.recordLocation = value;
+                    await this.plugin.saveSettings();
+                  })
+              );
+            },
+          },
+        ],
       },
     ];
   }
 
-  /** Replace the framework-rendered row with a collapsible `<details>` section. */
-  private renderSection(
-    setting: Setting,
-    title: string,
-    defaultOpen: boolean,
-    fill: (container: HTMLElement) => void
-  ): void {
-    setting.settingEl.empty();
-    const details = setting.settingEl.createEl("details", {
-      cls: "day-echo-settings-section",
-    });
-    details.open = defaultOpen;
-    const summary = details.createEl("summary", {
-      cls: "day-echo-settings-section-summary",
-    });
-    new Setting(summary).setName(title).setHeading();
-    fill(details);
-  }
-
   /** Segmented newest-first/oldest-first control, in place of a plain toggle. */
-  private buildSortOrderSetting(container: HTMLElement): void {
+  private buildSortOrderSetting(setting: Setting): void {
     let newestBtn: HTMLButtonElement;
     let oldestBtn: HTMLButtonElement;
     const sync = () => {
@@ -100,8 +137,7 @@ export class DayEchoSettingTab extends PluginSettingTab {
       sync();
     };
 
-    new Setting(container)
-      .setName(t("settings.sortOrder.name"))
+    setting
       .addButton((btn) => {
         newestBtn = btn.buttonEl;
         btn
@@ -117,60 +153,5 @@ export class DayEchoSettingTab extends PluginSettingTab {
           .onClick(() => select(true));
       });
     sync();
-  }
-
-  private buildGeneralSettings(container: HTMLElement): void {
-    new Setting(container)
-      .setName(t("settings.language.name"))
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("auto", t("settings.language.auto"))
-          .addOption("zh", "中文")
-          .addOption("en", "English")
-          .setValue(this.plugin.settings.language)
-          .onChange(async (value) => {
-            this.plugin.settings.language = value as LanguageSetting;
-            await this.plugin.saveSettings();
-            this.plugin.refreshLanguage();
-            this.update();
-          })
-      );
-  }
-
-  private buildBasicSettings(container: HTMLElement): void {
-    this.buildSortOrderSetting(container);
-
-    new Setting(container)
-      .setName(t("settings.diaryNav.name"))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showDiaryNav)
-          .onChange(async (value) => {
-            this.plugin.settings.showDiaryNav = value;
-            await this.plugin.saveSettings();
-            this.plugin.diaryNav.refresh();
-          })
-      );
-  }
-
-  private buildAdvancedSettings(container: HTMLElement): void {
-    new Setting(container)
-      .setName(t("settings.folder.name"))
-      .setDesc(t("settings.folder.desc"))
-      .addText((text) =>
-        text.setValue(this.plugin.settings.dailyFolder).setDisabled(true)
-      );
-
-    new Setting(container)
-      .setName(t("settings.location.name"))
-      .setDesc(t("settings.location.desc"))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.recordLocation)
-          .onChange(async (value) => {
-            this.plugin.settings.recordLocation = value;
-            await this.plugin.saveSettings();
-          })
-      );
   }
 }
