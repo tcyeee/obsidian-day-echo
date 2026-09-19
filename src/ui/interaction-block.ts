@@ -395,6 +395,9 @@ function dismissCard(card: HTMLElement, onComplete: () => void): void {
   // Force a reflow so the starting max-height is committed before we shrink it.
   void card.offsetHeight;
   card.addClass("is-leaving");
+  // Collapse via the same inline property we pinned above (rather than via a
+  // CSS class rule) so there's no specificity fight to win with !important.
+  card.setCssStyles({ maxHeight: "0" });
 
   let done = false;
   const finish = () => {
