@@ -48,8 +48,6 @@ export const en = {
   "nav.next": "Next",
 
   // Interaction block
-  "interaction.energy": "Energy",
-  "interaction.mood": "Mood",
   "interaction.today": "Today",
   "interaction.yesterday": "Yesterday",
   "interaction.saved": "Saved ✓",
@@ -57,10 +55,32 @@ export const en = {
   "interaction.insertMenu": "Insert echo interaction",
   "interaction.toggleSettings": "Display settings",
   "interaction.settingsLabel": "Show:",
+  "interaction.fieldsLabel": "Fields:",
+  "interaction.yes": "Yes",
+  "interaction.no": "No",
 
   // Startup
   "notice.dailyNotesRequired":
     "Day Echo needs the core \"Daily notes\" plugin enabled to start.",
+
+  // Settings tab — data fields
+  "settings.dataFields.header": "Data fields",
+  "settings.dataFields.desc":
+    "Define which pieces of data you track per day, and how each is recorded. They show up as selectable fields in the interaction card.",
+  "settings.dataFields.addButton": "Add field",
+  "settings.dataFields.labelPlaceholder": "Label",
+  "settings.dataFields.keyPlaceholder": "key",
+  "settings.dataFields.typeNumber": "Number",
+  "settings.dataFields.typeBoolean": "Boolean",
+  "settings.dataFields.minPlaceholder": "Min",
+  "settings.dataFields.maxPlaceholder": "Max",
+  "settings.dataFields.deleteAria": "Delete field",
+  "settings.dataFields.invalidKey":
+    "Field key must start with a letter or underscore and contain only letters, digits, or underscores.",
+  "settings.dataFields.duplicateKey":
+    "Field key \"{key}\" is already used by another field.",
+  "settings.dataFields.invalidRange":
+    "Min and max must be whole numbers with min less than max.",
 } as const;
 
 /** The full set of message keys, derived from the English catalog. */
