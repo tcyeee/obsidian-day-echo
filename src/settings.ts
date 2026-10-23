@@ -132,14 +132,13 @@ export class DayEchoSettingTab extends PluginSettingTab {
               name: field.label || field.key || t("settings.dataFields.labelPlaceholder"),
               render: (setting: Setting) => this.buildFieldRow(setting, field, index),
             })),
-            onDelete: async (index: number) => {
+            onDelete: (index: number) => {
               this.plugin.settings.dataFields.splice(index, 1);
-              await this.plugin.saveSettings();
-              this.update();
+              void this.plugin.saveSettings().then(() => this.update());
             },
             addItem: {
               name: t("settings.dataFields.addButton"),
-              action: async () => {
+              action: () => {
                 this.plugin.settings.dataFields.push({
                   key: "",
                   label: "",
@@ -147,8 +146,7 @@ export class DayEchoSettingTab extends PluginSettingTab {
                   min: 1,
                   max: 5,
                 });
-                await this.plugin.saveSettings();
-                this.update();
+                void this.plugin.saveSettings().then(() => this.update());
               },
             },
           },

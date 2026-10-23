@@ -166,7 +166,7 @@ export default class DayEchoPlugin extends Plugin {
         const weather = hasCoords
           ? await fetchWeather(geo.lat as number, geo.lon as number, "today")
           : null;
-        await this.app.fileManager.processFrontMatter(file, (fm) => {
+        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
           fm.location = location;
           if (hasCoords) fm.geo = `${geo.lat},${geo.lon}`;
           if (weather) applyWeather(fm, weather);
@@ -195,7 +195,7 @@ export default class DayEchoPlugin extends Plugin {
     if (!coords) return;
     const weather = await fetchWeather(coords.lat, coords.lon, "yesterday");
     if (!weather) return;
-    await this.app.fileManager.processFrontMatter(file, (fm) => {
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
       applyWeather(fm, weather);
     });
   }

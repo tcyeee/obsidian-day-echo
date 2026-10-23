@@ -459,9 +459,14 @@ function renderCard(
  * just vanish the instant the last card finishes its animation.
  */
 function dismissBlock(el: HTMLElement): void {
-  el.style.maxHeight = `${el.scrollHeight}px`;
+  // Pin the current height so the collapse transition has something to animate.
+  el.setCssStyles({ maxHeight: `${el.scrollHeight}px` });
+  // Force a reflow so the starting max-height is committed before we shrink it.
   void el.offsetHeight;
   el.addClass("is-leaving");
+  // Collapse via the same inline property we pinned above (rather than via a
+  // CSS class rule) so there's no specificity fight to win with !important.
+  el.setCssStyles({ maxHeight: "0" });
 
   let done = false;
   const finish = () => {
@@ -470,7 +475,7 @@ function dismissBlock(el: HTMLElement): void {
     el.empty();
     el.removeClass("ei-block");
     el.removeClass("is-leaving");
-    el.style.maxHeight = "";
+    el.setCssStyles({ maxHeight: "" });
   };
   el.addEventListener("transitionend", finish, { once: true });
   window.setTimeout(finish, 500);
@@ -638,7 +643,7 @@ function parseConfig(source: string): BlockConfig {
   if (!trimmed) return {};
   try {
     const parsed: unknown = parseYaml(trimmed);
-    if (parsed && typeof parsed === "object") return parsed as BlockConfig;
+    if (parsed && typeof parsed === "object") return parsed;
   } catch {
     // ignore, use defaults
   }
@@ -669,7 +674,7 @@ function readValues(
 
   const values: Record<string, FieldValue> = {};
   for (const field of fieldDefs) {
-    const raw = fm?.[field.key];
+    const raw: unknown = fm?.[field.key];
     if (field.type === "number") {
       values[field.key] = typeof raw === "number" ? raw : null;
     } else {
