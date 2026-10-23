@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.6
+
+- Added user-editable data fields: define custom number or yes/no fields (beyond the built-in day selection) in settings, with validation for keys and ranges, and they now render as interaction chips in the echo-interaction block. 新增用户自定义数据字段：可在设置中定义自定义的数值或是/否字段（不再局限于内置的日期选择），并对键名和取值范围做校验，这些字段会以互动卡片的形式显示在回声互动块中。
+- The interaction block now fades out as a whole once every card is dismissed, instead of the border and settings button disappearing abruptly the instant the last card's own animation finishes. 互动块评完全部卡片后，整个区块会先淡出再折叠，不再是边框和设置按钮在最后一张卡片动画结束的瞬间直接消失。
+- Settings tab now uses Obsidian's native declarative setting groups and sub-page instead of hand-rolled collapsible sections. 设置页改用 Obsidian 原生的声明式设置分组与子页面，不再使用手写的可折叠区块。
+- Refined the overlaid prev/next diary nav pills' alignment and removed a remaining `!important` from the card-dismiss collapse animation. 优化悬浮上/下篇日记导航胶囊按钮的对齐方式，并移除卡片收起折叠动画中残留的 `!important`。
+
 ## 0.1.5
 
 - Fixed several Obsidian submission-bot lint warnings: popout-window-unsafe timers and type checks, a direct inline-style assignment, a release workflow that always published as a draft, a build-provenance attestation missing manifest.json, and gaps in the version-compatibility history. 修复多项 Obsidian 提交审核机器人告警：不兼容弹出窗口的定时器与类型判断、直接内联样式赋值、发布流程始终停留在草稿状态、构建溯源认证缺少 manifest.json，以及版本兼容性历史记录中的缺口。
