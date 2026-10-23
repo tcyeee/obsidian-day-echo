@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.7
+
+- Fixed several more Obsidian submission-bot lint warnings: a direct inline-style assignment in the interaction block's collapse animation (and the `!important` it required to win), unsafe `any` access when writing location/weather data into frontmatter, async settings callbacks passed where a void return was expected, an unnecessary type assertion, and an untyped frontmatter field read. 修复了更多 Obsidian 提交审核机器人告警：互动块收起动画中的直接内联样式赋值（以及因此需要的 `!important`）、向 frontmatter 写入位置/天气数据时对 `any` 值的不安全访问、在期望 void 返回值处传入了 async 设置回调、一处多余的类型断言，以及一处未标注类型的 frontmatter 字段读取。
+
 ## 0.1.6
 
 - Added user-editable data fields: define custom number or yes/no fields (beyond the built-in day selection) in settings, with validation for keys and ranges, and they now render as interaction chips in the echo-interaction block. 新增用户自定义数据字段：可在设置中定义自定义的数值或是/否字段（不再局限于内置的日期选择），并对键名和取值范围做校验，这些字段会以互动卡片的形式显示在回声互动块中。
