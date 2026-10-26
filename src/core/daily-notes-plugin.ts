@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, normalizePath } from "obsidian";
 
 /** Shape of Obsidian's undocumented core "daily-notes" internal plugin. */
 interface DailyNotesInternalPlugin {
@@ -32,5 +32,10 @@ export function isDailyNotesPluginEnabled(app: App): boolean {
  * default (the vault root) when left blank.
  */
 export function getDailyNotesFolder(app: App): string {
-  return getDailyNotesPlugin(app)?.instance?.options?.folder?.trim() ?? "";
+  const folder = getDailyNotesPlugin(app)?.instance?.options?.folder?.trim();
+  if (!folder) return "";
+  // Core plugin stores the raw user input (e.g. a leading "/"), but vault
+  // lookups and path comparisons require Obsidian's normalized form.
+  const normalized = normalizePath(folder);
+  return normalized === "/" ? "" : normalized;
 }
