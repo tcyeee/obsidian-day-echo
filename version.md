@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+- Fixed the diary folder lookup to normalize the path read from the core Daily Notes plugin's settings, so a leading slash (e.g. "/daily") no longer silently breaks the bottom day navigation and timeline scan. 修复日记文件夹路径的读取逻辑，现在会对核心 Daily Notes 插件配置中的路径做归一化处理，避免路径开头带斜杠（如 "/daily"）时静默导致底部日期导航和时间轴扫描失效。
+
 ## 0.1.7
 
 - Fixed several more Obsidian submission-bot lint warnings: a direct inline-style assignment in the interaction block's collapse animation (and the `!important` it required to win), unsafe `any` access when writing location/weather data into frontmatter, async settings callbacks passed where a void return was expected, an unnecessary type assertion, and an untyped frontmatter field read. 修复了更多 Obsidian 提交审核机器人告警：互动块收起动画中的直接内联样式赋值（以及因此需要的 `!important`）、向 frontmatter 写入位置/天气数据时对 `any` 值的不安全访问、在期望 void 返回值处传入了 async 设置回调、一处多余的类型断言，以及一处未标注类型的 frontmatter 字段读取。
