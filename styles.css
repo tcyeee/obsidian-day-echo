@@ -728,14 +728,6 @@ body.day-echo-active .status-bar {
     margin-left: 0;
   }
 
-  .de-flow {
-    flex-direction: column;
-  }
-
-  .de-col {
-    width: 100%;
-  }
-
   .de-col > .de-card {
     aspect-ratio: auto;
   }
