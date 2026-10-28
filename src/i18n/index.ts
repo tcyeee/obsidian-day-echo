@@ -20,10 +20,20 @@ function resolveAuto(): "en" | "zh" {
   return lang.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 
+/** The concrete locale `setLocale` last resolved to; defaults to "en". */
+let activeLocale: "en" | "zh" = "en";
+
 /** Switch the active catalog. Call on load and whenever the setting changes. */
 export function setLocale(setting: LanguageSetting): void {
-  const locale = setting === "auto" ? resolveAuto() : setting;
-  active = CATALOGS[locale];
+  activeLocale = setting === "auto" ? resolveAuto() : setting;
+  active = CATALOGS[activeLocale];
+}
+
+/** The concrete locale currently active ("auto" already resolved). Used to
+ * localize values sourced outside the message catalog, e.g. place names from
+ * a geocoding API. */
+export function currentLocale(): "en" | "zh" {
+  return activeLocale;
 }
 
 /**

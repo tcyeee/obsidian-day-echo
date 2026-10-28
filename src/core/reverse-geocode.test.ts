@@ -36,4 +36,20 @@ describe("reverseGeocode", () => {
     requestUrl.mockRejectedValueOnce(new Error("offline"));
     expect(await reverseGeocode(31.22, 121.54)).toBeNull();
   });
+
+  test("requests zh place names for the zh locale", async () => {
+    reply({ principalSubdivision: "上海市", city: "上海市", locality: "浦东新区" });
+    await reverseGeocode(31.22, 121.54, "zh");
+    expect(requestUrl).toHaveBeenCalledWith({
+      url: expect.stringContaining("localityLanguage=zh"),
+    });
+  });
+
+  test("defaults to English place names", async () => {
+    reply({ principalSubdivision: "Shanghai", city: "Shanghai", locality: "Pudong" });
+    await reverseGeocode(31.22, 121.54);
+    expect(requestUrl).toHaveBeenCalledWith({
+      url: expect.stringContaining("localityLanguage=en"),
+    });
+  });
 });
