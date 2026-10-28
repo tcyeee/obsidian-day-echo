@@ -1,5 +1,5 @@
 import { App, TFile, TFolder, getAllTags } from "obsidian";
-import { DiaryEntry } from "../types";
+import { DiaryEntry, PreviewBlock } from "../types";
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -66,6 +66,7 @@ export async function scanDiaries(app: App, folder: string): Promise<DiaryEntry[
       date,
       file,
       previewText: plain.slice(0, 400),
+      previewBlocks: parsePreviewBlocks(body),
       searchText: plain.toLowerCase(),
       images: extractImages(body, app, file),
       tags,
@@ -166,16 +167,21 @@ function safeDecode(s: string): string {
   }
 }
 
+/** Drop fenced code blocks and image embeds, shared by the preview parsers below. */
+function stripCodeAndImages(body: string): string {
+  return body
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[\[[^\]]*\]\]/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ");
+}
+
 /**
  * Strip markup down to readable plain text (uncapped), preserving line breaks
  * so the timeline preview keeps the note's paragraph structure. Horizontal
  * whitespace is collapsed and blank lines are flattened to a single break.
  */
 function toPlainText(body: string): string {
-  return body
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/!\[\[[^\]]*\]\]/g, " ")
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+  return stripCodeAndImages(body)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[\[([^\]]*)\]\]/g, "$1")
     .replace(/[#>*_`~]/g, " ")
@@ -183,6 +189,76 @@ function toPlainText(body: string): string {
     .replace(/ *\n */g, "\n")
     .replace(/\n{2,}/g, "\n")
     .trim();
+}
+
+// Recognized at the start of a line; captures the list marker's text content.
+const TASK_LINE_RE = /^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/;
+const BULLET_LINE_RE = /^\s*[-*+]\s+(.*)$/;
+const ORDERED_LINE_RE = /^\s*\d+[.)]\s+(.*)$/;
+
+/** Total characters of list/paragraph content a card preview will parse. */
+const PREVIEW_CHAR_BUDGET = 400;
+
+/** Clean a single line's inline markdown down to plain text. */
+function sanitizeInline(line: string): string {
+  return line
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[\[([^\]]*)\]\]/g, "$1")
+    .replace(/[#>*_`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Parse the note body into paragraph/list blocks for the collapsed card, so
+ * bullet, numbered, and task list syntax render as real markup instead of raw
+ * dashes/digits/brackets. Stops once `PREVIEW_CHAR_BUDGET` characters of
+ * content have been collected, mirroring the `previewText` cap.
+ */
+export function parsePreviewBlocks(body: string): PreviewBlock[] {
+  const blocks: PreviewBlock[] = [];
+  let budget = PREVIEW_CHAR_BUDGET;
+  let currentP: string[] | null = null;
+
+  const flushParagraph = (): void => {
+    if (currentP && currentP.length) blocks.push({ type: "p", text: currentP.join("\n") });
+    currentP = null;
+  };
+
+  for (const line of stripCodeAndImages(body).split("\n")) {
+    if (budget <= 0) break;
+    if (!line.trim()) continue; // blank lines are insignificant, like in toPlainText
+
+    let m: RegExpExecArray | null;
+    const last = blocks[blocks.length - 1];
+    if ((m = TASK_LINE_RE.exec(line))) {
+      flushParagraph();
+      const text = sanitizeInline(m[2]);
+      const checked = m[1].toLowerCase() === "x";
+      budget -= text.length;
+      if (last?.type === "task") last.items.push({ text, checked });
+      else blocks.push({ type: "task", items: [{ text, checked }] });
+    } else if ((m = BULLET_LINE_RE.exec(line))) {
+      flushParagraph();
+      const text = sanitizeInline(m[1]);
+      budget -= text.length;
+      if (last?.type === "ul") last.items.push(text);
+      else blocks.push({ type: "ul", items: [text] });
+    } else if ((m = ORDERED_LINE_RE.exec(line))) {
+      flushParagraph();
+      const text = sanitizeInline(m[1]);
+      budget -= text.length;
+      if (last?.type === "ol") last.items.push(text);
+      else blocks.push({ type: "ol", items: [text] });
+    } else {
+      const text = sanitizeInline(line);
+      if (!text) continue;
+      budget -= text.length;
+      (currentP ??= []).push(text);
+    }
+  }
+  flushParagraph();
+  return blocks;
 }
 
 function dedupe(items: string[]): string[] {

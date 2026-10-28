@@ -28,6 +28,17 @@ export interface FieldDef {
   max?: number;
 }
 
+/**
+ * A structured chunk of the preview body, parsed well enough to tell
+ * paragraphs apart from bullet/numbered/task lists so the collapsed card can
+ * render real `<ul>`/`<ol>`/checkbox markup instead of raw list syntax.
+ */
+export type PreviewBlock =
+  | { type: "p"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "task"; items: { text: string; checked: boolean }[] };
+
 /** One parsed daily note, ready to render on the timeline. */
 export interface DiaryEntry {
   /** Date of the entry, used for sorting and node grouping. */
@@ -36,6 +47,8 @@ export interface DiaryEntry {
   file: TFile;
   /** Plain-text preview (images/code stripped), capped for the collapsed card. */
   previewText: string;
+  /** Structured preview blocks (paragraphs/lists), rendered on the collapsed card. */
+  previewBlocks: PreviewBlock[];
   /** Full plain-text body (lowercased), used for searching beyond the preview cap. */
   searchText: string;
   /** Resolved image resource URLs, in order of appearance. */
