@@ -8,6 +8,7 @@ function entry(date: string): DiaryEntry {
     date: new Date(date),
     file: { path: date } as never,
     previewText: "",
+    previewBlocks: [],
     searchText: "",
     images: [],
     tags: [],

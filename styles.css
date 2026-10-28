@@ -554,11 +554,41 @@ body.day-echo-active .status-bar {
   font-size: var(--font-ui-medium);
   line-height: 1.6;
   color: var(--de-muted);
-  white-space: pre-wrap;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Preserve paragraph line breaks, and tighten the reading view's normal block
+ * spacing so lists/paragraphs stay compact inside the collapsed card. */
+.de-text p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.de-text ul,
+.de-text ol {
+  margin: 0;
+  /* padding-inline-start stays at the theme's own 0: Obsidian already
+   * reserves marker space via `li { margin-inline-start: 3ch }`, so adding
+   * padding here on top of it doubled the left indent inside the card. */
+}
+
+.de-text p + p,
+.de-text p + ul,
+.de-text p + ol,
+.de-text ul + p,
+.de-text ol + p {
+  margin-top: 4px;
+}
+
+.de-text .task-list-item {
+  list-style: none;
+}
+
+.de-text .task-list-item-checkbox {
+  vertical-align: middle;
 }
 
 .de-thumbs {

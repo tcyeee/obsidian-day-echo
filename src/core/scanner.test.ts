@@ -6,13 +6,14 @@ vi.mock("obsidian", () => ({
   TFile: class {},
 }));
 
-import { isEmptyEntry, isImageRef } from "./scanner";
+import { isEmptyEntry, isImageRef, parsePreviewBlocks } from "./scanner";
 import type { DiaryEntry } from "../types";
 
 const makeEntry = (over: Partial<DiaryEntry>): DiaryEntry => ({
   date: new Date(2026, 0, 1),
   file: {} as DiaryEntry["file"],
   previewText: "",
+  previewBlocks: [],
   searchText: "",
   images: [],
   tags: [],
@@ -36,6 +37,46 @@ describe("isEmptyEntry", () => {
     // Frontmatter is stripped before previewText, so a note carrying only
     // recorded weather/location or frontmatter tags reads as empty.
     expect(isEmptyEntry(makeEntry({ tags: ["#weather"] }))).toBe(true);
+  });
+});
+
+describe("parsePreviewBlocks", () => {
+  test("groups consecutive bullet lines into one ul block", () => {
+    const blocks = parsePreviewBlocks("- apple\n- banana\n* cherry");
+    expect(blocks).toEqual([{ type: "ul", items: ["apple", "banana", "cherry"] }]);
+  });
+
+  test("groups consecutive numbered lines into one ol block", () => {
+    const blocks = parsePreviewBlocks("1. first\n2) second");
+    expect(blocks).toEqual([{ type: "ol", items: ["first", "second"] }]);
+  });
+
+  test("parses task list items with checked state", () => {
+    const blocks = parsePreviewBlocks("- [ ] todo\n- [x] done\n- [X] also done");
+    expect(blocks).toEqual([
+      {
+        type: "task",
+        items: [
+          { text: "todo", checked: false },
+          { text: "done", checked: true },
+          { text: "also done", checked: true },
+        ],
+      },
+    ]);
+  });
+
+  test("keeps paragraphs and lists as separate blocks in order", () => {
+    const blocks = parsePreviewBlocks("intro line\n- one\n- two\noutro line");
+    expect(blocks).toEqual([
+      { type: "p", text: "intro line" },
+      { type: "ul", items: ["one", "two"] },
+      { type: "p", text: "outro line" },
+    ]);
+  });
+
+  test("strips inline emphasis within list item text", () => {
+    const blocks = parsePreviewBlocks("- this is **bold** and _italic_");
+    expect(blocks).toEqual([{ type: "ul", items: ["this is bold and italic"] }]);
   });
 });
 

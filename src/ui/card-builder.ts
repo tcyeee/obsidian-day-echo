@@ -1,5 +1,5 @@
 import { App, Component, setIcon } from "obsidian";
-import type { DiaryEntry } from "../types";
+import type { DiaryEntry, PreviewBlock } from "../types";
 import { PREVIEW_THUMBS } from "./view-constants";
 import { openDiaryModal } from "./diary-modal";
 import { t } from "../i18n";
@@ -33,8 +33,11 @@ export function buildCard(entry: DiaryEntry, ctx: CardContext): HTMLElement {
 
   const preview = card.createDiv({ cls: "de-preview" });
 
-  if (entry.previewText) {
-    preview.createDiv({ cls: "de-text", text: entry.previewText });
+  if (entry.previewBlocks.length) {
+    // The `markdown-rendered` class picks up the theme's own list/task-list
+    // CSS, so bullets, numbering, and checkboxes match the note's reading view.
+    const text = preview.createDiv({ cls: "de-text markdown-rendered" });
+    renderPreviewBlocks(text, entry.previewBlocks);
   }
   if (entry.images.length) {
     const thumbs = preview.createDiv({ cls: "de-thumbs" });
@@ -114,6 +117,45 @@ export function estimateHeight(entry: DiaryEntry): number {
   }
   if (entry.tags.length) h += 34;
   return Math.max(h, 140);
+}
+
+/** Render parsed preview blocks as real paragraph/list markup, matching the
+ * DOM shape Obsidian's own reading view produces for lists and task lists. */
+function renderPreviewBlocks(container: HTMLElement, blocks: PreviewBlock[]): void {
+  for (const block of blocks) {
+    switch (block.type) {
+      case "p":
+        container.createEl("p", { text: block.text });
+        break;
+      case "ul": {
+        const ul = container.createEl("ul");
+        for (const item of block.items) ul.createEl("li", { text: item });
+        break;
+      }
+      case "ol": {
+        const ol = container.createEl("ol");
+        for (const item of block.items) ol.createEl("li", { text: item });
+        break;
+      }
+      case "task": {
+        const ul = container.createEl("ul", { cls: "contains-task-list" });
+        for (const item of block.items) {
+          const li = ul.createEl("li", {
+            cls: item.checked ? "task-list-item is-checked" : "task-list-item",
+          });
+          li.setAttr("data-task", item.checked ? "x" : " ");
+          const checkbox = li.createEl("input", {
+            cls: "task-list-item-checkbox",
+            type: "checkbox",
+          });
+          checkbox.disabled = true;
+          checkbox.checked = item.checked;
+          li.createSpan({ text: item.text });
+        }
+        break;
+      }
+    }
+  }
 }
 
 function fullDate(d: Date): string {
