@@ -210,6 +210,28 @@ export default class DayEchoPlugin extends Plugin {
     await this.app.vault.append(file, "\n```echo-location\n```\n");
   }
 
+  /** Strip the auto-inserted `echo-location` card from the note body, if present. */
+  private async removeLocationCard(file: TFile): Promise<void> {
+    const content = await this.app.vault.read(file);
+    const stripped = content.replace(/\n?```echo-location\n```\n?/, "");
+    if (stripped !== content) await this.app.vault.modify(file, stripped);
+  }
+
+  /**
+   * Add or remove the card in today's note right away when `showLocationCard`
+   * is toggled, instead of only taking effect on the next note creation — the
+   * setting's effect should be visible immediately. No-ops when today's note
+   * doesn't exist yet (it'll get the card on creation, since the setting is
+   * already in its new state by then).
+   */
+  async syncLocationCardToday(show: boolean): Promise<void> {
+    const path = dailyNotePath(this.settings.dailyFolder, new Date());
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return;
+    if (show) await this.ensureLocationCard(file);
+    else await this.removeLocationCard(file);
+  }
+
   /**
    * Overwrite yesterday's note weather with what actually happened. Yesterday's
    * note stored its own `geo`, so a trip is handled correctly — the lookup uses
