@@ -14,8 +14,12 @@ export interface DayEchoSettings {
   zoom: ZoomLevel;
   /** Show the prev/next bar on top of open daily notes. */
   showDiaryNav: boolean;
-  /** Record the creator's city (via IP lookup) in new notes' frontmatter. */
+  /** Record the creator's city (via device/IP lookup) in new notes' frontmatter. */
   recordLocation: boolean;
+  /** Auto-insert the `echo-location` card into a note when it's created. */
+  showLocationCard: boolean;
+  /** When non-empty, written as `location` instead of the detected city. */
+  locationOverride: string;
   /** UI language; `auto` follows Obsidian's interface language. */
   language: LanguageSetting;
   /** User-defined per-day data fields shown in echo-interaction blocks. */
@@ -32,6 +36,8 @@ export const DEFAULT_SETTINGS: DayEchoSettings = {
   zoom: "month",
   showDiaryNav: true,
   recordLocation: true,
+  showLocationCard: true,
+  locationOverride: "",
   language: "auto",
   timelineTitle: "",
   timelineSubtitle: "",
@@ -157,6 +163,35 @@ export class DayEchoSettingTab extends PluginSettingTab {
                   .setValue(this.plugin.settings.recordLocation)
                   .onChange(async (value) => {
                     this.plugin.settings.recordLocation = value;
+                    await this.plugin.saveSettings();
+                  })
+              );
+            },
+          },
+          {
+            name: t("settings.showLocationCard.name"),
+            desc: t("settings.showLocationCard.desc"),
+            render: (setting: Setting) => {
+              setting.addToggle((toggle) =>
+                toggle
+                  .setValue(this.plugin.settings.showLocationCard)
+                  .onChange(async (value) => {
+                    this.plugin.settings.showLocationCard = value;
+                    await this.plugin.saveSettings();
+                  })
+              );
+            },
+          },
+          {
+            name: t("settings.locationOverride.name"),
+            desc: t("settings.locationOverride.desc"),
+            render: (setting: Setting) => {
+              setting.addText((text) =>
+                text
+                  .setPlaceholder(t("settings.locationOverride.placeholder"))
+                  .setValue(this.plugin.settings.locationOverride)
+                  .onChange(async (value) => {
+                    this.plugin.settings.locationOverride = value;
                     await this.plugin.saveSettings();
                   })
               );

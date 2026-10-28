@@ -1087,6 +1087,115 @@ body.day-echo-active .status-bar {
   40%, 80% { transform: translateX(4px); }
 }
 
+/* ── echo-location code block ──────────────────────────── */
+
+.el-card {
+  padding: 14px 18px;
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.el-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.el-header-icon {
+  display: flex;
+  color: var(--text-muted);
+}
+
+.el-title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+  color: var(--text-normal);
+  flex: 1;
+}
+
+.el-status {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.el-status.is-visible {
+  opacity: 1;
+}
+
+.el-status.el-status--warn {
+  color: var(--color-red);
+}
+
+.el-relocate-btn.clickable-icon {
+  color: var(--text-muted);
+}
+
+.el-relocate-btn.clickable-icon.is-loading svg {
+  animation: el-spin 900ms linear infinite;
+}
+
+@keyframes el-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.el-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.el-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.el-row-icon {
+  display: flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.el-row-value {
+  font-size: var(--font-ui-medium);
+  color: var(--text-normal);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.el-row-value--empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.el-row-value.is-hidden {
+  display: none;
+}
+
+.el-row-input {
+  flex: 1;
+  font-size: var(--font-ui-medium);
+}
+
+.el-edit-btn.clickable-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.el-edit-btn.clickable-icon.is-hidden {
+  display: none;
+}
+
 .day-echo-sort-btn.is-active {
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);

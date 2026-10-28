@@ -2,12 +2,13 @@ import { Editor, MarkdownView, Menu } from "obsidian";
 import type DayEchoPlugin from "../main";
 import { t } from "../i18n";
 
-const SNIPPET = "```echo-interaction\ndate: [today, yesterday]\n```\n";
+const INTERACTION_SNIPPET = "```echo-interaction\ndate: [today, yesterday]\n```\n";
+const LOCATION_SNIPPET = "```echo-location\n```\n";
 
 /**
- * Add a top-level "Insert echo interaction" item to the editor right-click
- * menu. Clicking it drops an `echo-interaction` code block at the cursor,
- * which the markdown post-processor then renders as the interaction widget.
+ * Add "Insert echo interaction" and "Insert location & weather card" items to
+ * the editor right-click menu. Each drops its code block at the cursor, which
+ * the matching markdown post-processor then renders as the live widget.
  */
 export function registerInsertMenu(plugin: DayEchoPlugin): void {
   plugin.registerEvent(
@@ -20,7 +21,15 @@ export function registerInsertMenu(plugin: DayEchoPlugin): void {
             .setTitle(t("interaction.insertMenu"))
             .setIcon("heart-pulse")
             .onClick(() => {
-              editor.replaceSelection(SNIPPET);
+              editor.replaceSelection(INTERACTION_SNIPPET);
+            });
+        });
+        menu.addItem((item) => {
+          item
+            .setTitle(t("location.insertMenu"))
+            .setIcon("map-pin")
+            .onClick(() => {
+              editor.replaceSelection(LOCATION_SNIPPET);
             });
         });
       }

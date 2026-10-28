@@ -20,7 +20,14 @@ export const zh: Messages = {
   "settings.diaryNav.name": "显示日记底部导航",
   "settings.location.name": "创建时记录位置与天气",
   "settings.location.desc":
-    "创建今天的日记时，通过 IP 查询你所在的城市与坐标并写入 frontmatter，同时记录当天天气与温湿度，并用实测值回填昨天日记的天气。需要联网，会把你的 IP 发送给 ip-api.com，并向 open-meteo.com 查询天气。",
+    "创建今天的日记时，优先使用设备自带的定位服务获取坐标（会弹出定位权限请求），再通过 bigdatacloud.net 反查城市名；仅当定位不可用或被拒绝时，才回退到基于 IP 的 ip-api.com 查询——设备定位不会像 IP 查询那样被 VPN 误导。同时会记录当天天气与温湿度（来自 open-meteo.com），并用实测值回填昨天日记的天气。需要联网。",
+  "settings.showLocationCard.name": "在日记中显示位置天气卡片",
+  "settings.showLocationCard.desc":
+    "创建日记时自动在正文中插入一个 echo-location 卡片，展示已记录的城市与天气，并提供「重新定位」按钮和手动修改城市的入口。关闭后仍会写入 frontmatter，只是不自动插入卡片；随时可以从编辑器右键菜单手动插入。",
+  "settings.locationOverride.name": "手动指定城市",
+  "settings.locationOverride.desc":
+    "填写后将直接作为城市写入日记，不再使用自动识别的结果——适合自动识别始终出错时使用（例如 VPN 环境下设备定位也不可用）。天气仍会使用自动识别到的坐标，不受这里的文本影响。",
+  "settings.locationOverride.placeholder": "例如：上海-上海",
   "settings.language.name": "语言",
   "settings.language.auto": "自动",
 
@@ -47,6 +54,16 @@ export const zh: Messages = {
   // Diary prev/next nav
   "nav.prev": "前一篇",
   "nav.next": "后一篇",
+
+  // Location & weather card
+  "location.title": "位置与天气",
+  "location.relocate": "重新定位",
+  "location.relocating": "定位中…",
+  "location.relocateFailed": "重新定位失败，请检查网络连接或定位权限。",
+  "location.editAria": "修改城市",
+  "location.noLocation": "尚未记录位置",
+  "location.noWeather": "尚未记录天气",
+  "location.insertMenu": "插入位置天气卡片",
 
   // Interaction block
   "interaction.today": "今天",
