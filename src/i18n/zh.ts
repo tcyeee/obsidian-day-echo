@@ -33,6 +33,7 @@ export const zh: Messages = {
   "view.today": "今天",
   "view.todayCta": "开始今天的日记",
   "view.createFailed": "Day Echo: 创建今日日记失败 — {error}",
+  "view.writeNote": "写笔记",
 
   // Zoom switch
   "zoom.month": "月",

@@ -37,6 +37,7 @@ export const en = {
   "view.today": "Today",
   "view.todayCta": "Start today's diary",
   "view.createFailed": "Day Echo: failed to create today's note — {error}",
+  "view.writeNote": "Write a note",
 
   // Zoom switch (fixed 36px circular pill — single glyph only)
   "zoom.month": "M",

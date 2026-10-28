@@ -5,6 +5,7 @@ import {
   TFile,
   WorkspaceLeaf,
   setIcon,
+  setTooltip,
 } from "obsidian";
 import { DiaryEntry, ZoomLevel } from "../types";
 import { buildItems, prependToday } from "../core/aggregate";
@@ -187,6 +188,7 @@ export class DayEchoView extends ItemView {
     this.widthObserver.observe(this.scrollEl);
 
     this.renderZoomSwitch(root);
+    this.renderWriteNoteButton(root);
     this.renderTimeline();
   }
 
@@ -228,6 +230,18 @@ export class DayEchoView extends ItemView {
     const opts =
       this.zoomSwitchEl.querySelectorAll<HTMLElement>(".de-zoom-opt");
     opts.forEach((opt, i) => opt.toggleClass("is-active", i === idx));
+  }
+
+  /**
+   * Standalone circular button below the zoom switch — same visual
+   * language as its pill, but for creating/opening today's note from
+   * anywhere in the timeline (not just the empty-state CTA).
+   */
+  private renderWriteNoteButton(root: HTMLElement): void {
+    const btn = root.createEl("button", { cls: "de-write-note" });
+    setIcon(btn, "pencil");
+    setTooltip(btn, t("view.writeNote"));
+    btn.addEventListener("click", () => void this.createTodayNote());
   }
 
   /** Expand (show=true) or collapse (show=false) the back-to-top button inside the pill. */
