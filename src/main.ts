@@ -120,6 +120,14 @@ export default class DayEchoPlugin extends Plugin {
     this.diaryNav.refresh();
   }
 
+  /** Redraw the timeline's title/subtitle after a settings change. */
+  refreshTimelineHeader(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_DAY_ECHO)) {
+      const view = leaf.view;
+      if (view instanceof DayEchoView) view.refreshHeader();
+    }
+  }
+
   async activateView(): Promise<void> {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType(VIEW_TYPE_DAY_ECHO)[0];

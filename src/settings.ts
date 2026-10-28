@@ -20,6 +20,10 @@ export interface DayEchoSettings {
   language: LanguageSetting;
   /** User-defined per-day data fields shown in echo-interaction blocks. */
   dataFields: FieldDef[];
+  /** Timeline header title; empty string falls back to the localized default. */
+  timelineTitle: string;
+  /** Timeline header subtitle; empty string falls back to the localized default. */
+  timelineSubtitle: string;
 }
 
 export const DEFAULT_SETTINGS: DayEchoSettings = {
@@ -29,6 +33,8 @@ export const DEFAULT_SETTINGS: DayEchoSettings = {
   showDiaryNav: true,
   recordLocation: true,
   language: "auto",
+  timelineTitle: "",
+  timelineSubtitle: "",
   dataFields: [
     { key: "energy", label: "Energy", type: "number", min: 1, max: 5 },
     { key: "mood", label: "Mood", type: "number", min: 1, max: 5 },
@@ -77,6 +83,38 @@ export class DayEchoSettingTab extends PluginSettingTab {
         type: "group",
         heading: t("settings.section.basic"),
         items: [
+          {
+            name: t("settings.timelineTitle.name"),
+            desc: t("settings.timelineTitle.desc"),
+            render: (setting: Setting) => {
+              setting.addText((text) =>
+                text
+                  .setPlaceholder(t("view.stats.title"))
+                  .setValue(this.plugin.settings.timelineTitle)
+                  .onChange(async (value) => {
+                    this.plugin.settings.timelineTitle = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshTimelineHeader();
+                  })
+              );
+            },
+          },
+          {
+            name: t("settings.timelineSubtitle.name"),
+            desc: t("settings.timelineSubtitle.desc"),
+            render: (setting: Setting) => {
+              setting.addText((text) =>
+                text
+                  .setPlaceholder(t("view.stats.subtitle"))
+                  .setValue(this.plugin.settings.timelineSubtitle)
+                  .onChange(async (value) => {
+                    this.plugin.settings.timelineSubtitle = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshTimelineHeader();
+                  })
+              );
+            },
+          },
           {
             name: t("settings.sortOrder.name"),
             render: (setting: Setting) => this.buildSortOrderSetting(setting),

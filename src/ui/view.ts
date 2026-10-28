@@ -572,14 +572,22 @@ export class DayEchoView extends ItemView {
     this.updateSticky();
   }
 
+  /** Redraw just the title/subtitle, e.g. after a settings change. */
+  refreshHeader(): void {
+    this.updateStats();
+  }
+
   /** Refresh the note-count stats shown in the top blank space. */
   private updateStats(): void {
     if (!this.statsEl) return;
     this.statsEl.empty();
-    this.statsEl.createDiv({ cls: "de-stats-title", text: t("view.stats.title") });
+    this.statsEl.createDiv({
+      cls: "de-stats-title",
+      text: this.plugin.settings.timelineTitle || t("view.stats.title"),
+    });
     this.statsEl.createDiv({
       cls: "de-stats-subtitle",
-      text: t("view.stats.subtitle"),
+      text: this.plugin.settings.timelineSubtitle || t("view.stats.subtitle"),
     });
     this.statsEl.createSpan({
       cls: "de-stats-num",
