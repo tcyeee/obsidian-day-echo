@@ -24,7 +24,14 @@ export const en = {
   "settings.diaryNav.name": "Show diary bottom navigation",
   "settings.location.name": "Record location and weather on creation",
   "settings.location.desc":
-    "When creating today's note, look up your city and coordinates by IP and write them to the frontmatter, record today's weather and temperature/humidity, and back-fill yesterday's note with its actual weather. Requires a network connection; sends your IP to ip-api.com and queries open-meteo.com for weather.",
+    "When creating today's note, try your device's own location service first (prompts for a location permission), reverse-geocode it via bigdatacloud.net, and fall back to an IP-based lookup via ip-api.com only if that's unavailable or denied — device location isn't fooled by a VPN the way an IP lookup is. Also records today's weather and temperature/humidity from open-meteo.com, and back-fills yesterday's note with its actual weather. Requires a network connection.",
+  "settings.showLocationCard.name": "Show location & weather card in notes",
+  "settings.showLocationCard.desc":
+    "Automatically add an echo-location card to a note when it's created, showing its recorded city and weather with a button to re-detect and a field to edit the city by hand. Turning this off still records to frontmatter, just without the card; you can always insert one manually from the editor's right-click menu.",
+  "settings.locationOverride.name": "Manual city override",
+  "settings.locationOverride.desc":
+    "When set, this is written as the city instead of the detected one — use it if detection still gets it wrong (e.g. a VPN with no usable device location). Weather still uses the detected coordinates, not this text.",
+  "settings.locationOverride.placeholder": "e.g. Shanghai-Shanghai",
   "settings.language.name": "Language",
   "settings.language.auto": "Auto",
 
@@ -51,6 +58,16 @@ export const en = {
   // Diary prev/next nav
   "nav.prev": "Previous",
   "nav.next": "Next",
+
+  // Location & weather card
+  "location.title": "Location & weather",
+  "location.relocate": "Re-detect",
+  "location.relocating": "Detecting…",
+  "location.relocateFailed": "Re-detect failed — check your connection or location permission.",
+  "location.editAria": "Edit city",
+  "location.noLocation": "No location recorded yet",
+  "location.noWeather": "No weather recorded yet",
+  "location.insertMenu": "Insert location & weather card",
 
   // Interaction block
   "interaction.today": "Today",

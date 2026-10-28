@@ -1,6 +1,8 @@
 import { Notice, Plugin, TAbstractFile, TFile } from "obsidian";
 import { DayEchoView, VIEW_TYPE_DAY_ECHO } from "./ui/view";
 import { fetchLocation } from "./core/geolocation";
+import { fetchDeviceCoords } from "./core/device-location";
+import { reverseGeocode } from "./core/reverse-geocode";
 import { fetchWeather, type WeatherResult } from "./core/weather";
 import { dailyNotePath } from "./core/daily-note";
 import {
@@ -9,6 +11,7 @@ import {
 } from "./core/daily-notes-plugin";
 import { DiaryNav } from "./ui/diary-nav";
 import { registerInteractionBlock } from "./ui/interaction-block";
+import { registerLocationBlock } from "./ui/location-block";
 import { registerInsertMenu } from "./ui/insert-menu";
 import {
   DayEchoSettings,
@@ -51,6 +54,7 @@ export default class DayEchoPlugin extends Plugin {
 
     this.addSettingTab(new DayEchoSettingTab(this.app, this));
     registerInteractionBlock(this);
+    registerLocationBlock(this);
     registerInsertMenu(this);
 
     const onChange = (file: TAbstractFile) => this.scheduleRefresh(file.path);
@@ -156,34 +160,54 @@ export default class DayEchoPlugin extends Plugin {
 
   /**
    * Record creation context on a freshly created note: the creator's city and
-   * coordinates (by IP) plus today's weather, then back-fill yesterday's note
-   * with its now-finalized actual weather. Fire-and-forget: callers should not
+   * coordinates plus today's weather, then back-fill yesterday's note with
+   * its now-finalized actual weather. Fire-and-forget: callers should not
    * await this, so the network lookups never delay opening the note. No-ops
-   * when the setting is off; stays silent on any failure. VPN/proxy exits get a
-   * "(VPN?)" marker since the reported city is the exit node's, not the user's.
+   * when the setting is off; stays silent on any failure.
    */
   async recordContext(file: TFile): Promise<void> {
     if (!this.settings.recordLocation) return;
     try {
-      const geo = await fetchLocation();
-      if (geo) {
-        const location = geo.proxy ? `${geo.location} (VPN?)` : geo.location;
-        const hasCoords = geo.lat !== null && geo.lon !== null;
-        // Today's high/low are still a forecast; backfillYesterday corrects each
-        // note with actuals the next day a note is created.
-        const weather = hasCoords
-          ? await fetchWeather(geo.lat as number, geo.lon as number, "today")
-          : null;
-        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-          fm.location = location;
-          if (hasCoords) fm.geo = `${geo.lat},${geo.lon}`;
-          if (weather) applyWeather(fm, weather);
-        });
-      }
+      await this.applyLocationAndWeather(file);
+      if (this.settings.showLocationCard) await this.ensureLocationCard(file);
       await this.backfillYesterday();
     } catch (err: unknown) {
       console.warn("Day Echo: failed to record creation context", err);
     }
+  }
+
+  /**
+   * Detect the current city/coordinates and today's weather, then write them
+   * to `file`'s frontmatter. Shared by `recordContext` (on note creation) and
+   * the `echo-location` card's "re-detect" button (a manual re-run, e.g. after
+   * turning a VPN off or granting the location permission). A non-empty
+   * `locationOverride` replaces the detected city label only — weather still
+   * uses the detected coordinates. Returns false without writing anything
+   * when every lookup fails (e.g. fully offline), so callers can tell the
+   * difference from "nothing changed."
+   */
+  async applyLocationAndWeather(file: TFile): Promise<boolean> {
+    const resolved = await resolveLocationContext();
+    if (!resolved) return false;
+    const override = this.settings.locationOverride.trim();
+    const location = override || resolved.location;
+    const hasCoords = resolved.lat !== null && resolved.lon !== null;
+    const weather = hasCoords
+      ? await fetchWeather(resolved.lat as number, resolved.lon as number, "today")
+      : null;
+    await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+      fm.location = location;
+      if (hasCoords) fm.geo = `${resolved.lat},${resolved.lon}`;
+      if (weather) applyWeather(fm, weather);
+    });
+    return true;
+  }
+
+  /** Append an `echo-location` card to the note body, unless it already has one. */
+  private async ensureLocationCard(file: TFile): Promise<void> {
+    const content = await this.app.vault.read(file);
+    if (content.includes("```echo-location")) return;
+    await this.app.vault.append(file, "\n```echo-location\n```\n");
   }
 
   /**
@@ -207,6 +231,34 @@ export default class DayEchoPlugin extends Plugin {
       applyWeather(fm, weather);
     });
   }
+}
+
+interface LocationContext {
+  /** "Region-City-District", already carrying a "(VPN?)" marker if applicable. */
+  location: string;
+  lat: number | null;
+  lon: number | null;
+}
+
+/**
+ * Resolve the creator's city and coordinates, preferring the device's own
+ * location service over an IP-based lookup: a VPN reroutes network traffic,
+ * not the OS location service, so device coordinates stay correct where an
+ * IP lookup would report the exit node's city instead. Falls back to the
+ * IP-based lookup (flagging VPN/proxy exits with a "(VPN?)" marker) when
+ * device location is unavailable, denied, or its coordinates can't be
+ * reverse-geocoded to a place name.
+ */
+async function resolveLocationContext(): Promise<LocationContext | null> {
+  const coords = await fetchDeviceCoords();
+  if (coords) {
+    const location = await reverseGeocode(coords.lat, coords.lon);
+    if (location) return { location, lat: coords.lat, lon: coords.lon };
+  }
+  const geo = await fetchLocation();
+  if (!geo) return null;
+  const location = geo.proxy ? `${geo.location} (VPN?)` : geo.location;
+  return { location, lat: geo.lat, lon: geo.lon };
 }
 
 /** Write a weather summary into frontmatter using the agreed field shape. */
