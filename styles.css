@@ -129,6 +129,35 @@ body.day-echo-active .status-bar {
   pointer-events: none;
 }
 
+/* Standalone "write a note" button, floating just below the zoom switch.
+   Same pill styling, sized to match its 44px outer diameter. */
+.de-write-note {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 248, 247, 0.9);
+  border: 1px solid var(--de-rose-soft);
+  box-shadow: var(--de-cloud-shadow);
+  backdrop-filter: blur(10px);
+  color: var(--de-muted);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.de-write-note:hover {
+  background: rgba(255, 248, 247, 0.9);
+  box-shadow: var(--de-cloud-shadow);
+  color: var(--de-rose);
+}
+
 /* Body: the scrollable timeline */
 .de-body {
   display: flex;
