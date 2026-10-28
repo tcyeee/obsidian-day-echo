@@ -1,8 +1,8 @@
 import { DiaryEntry, RenderItem } from "../types";
 
-/** One card slot in the continuous two-column flow. */
+/** One card slot in the continuous multi-column flow. */
 export interface PlannedCard {
-  col: 0 | 1;
+  col: number;
   entry: DiaryEntry;
   /** Hidden entries behind this card when it renders as a "+N" fold. */
   fold?: DiaryEntry[];
@@ -25,7 +25,7 @@ export interface TimelinePlan {
 }
 
 /**
- * Lay every card out into two continuous columns spanning the whole
+ * Lay every card out into `columns` continuous columns spanning the whole
  * timeline: each card goes to the column whose estimated height is currently
  * smaller, and group boundaries never break the flow. Groups in `unfolded`
  * flow their hidden entries as plain cards; the rest get one fold card
@@ -34,14 +34,18 @@ export interface TimelinePlan {
 export function planLayout(
   items: RenderItem[],
   unfolded: ReadonlySet<string>,
-  estimate: (entry: DiaryEntry) => number
+  estimate: (entry: DiaryEntry) => number,
+  columns = 2
 ): TimelinePlan {
   const groups: PlannedGroup[] = [];
   const cards: PlannedCard[] = [];
-  const heights = [0, 0];
+  const heights = new Array<number>(columns).fill(0);
 
   const place = (entry: DiaryEntry, fold?: DiaryEntry[], foldKey?: string): void => {
-    const col = heights[0] <= heights[1] ? 0 : 1;
+    let col = 0;
+    for (let i = 1; i < heights.length; i++) {
+      if (heights[i] < heights[col]) col = i;
+    }
     cards.push(fold && foldKey ? { col, entry, fold, foldKey } : { col, entry });
     heights[col] += estimate(entry);
   };

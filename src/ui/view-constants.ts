@@ -21,6 +21,8 @@ export const SWAP_OUT_MS = 120;
 export const SWAP_IN_MS = 180;
 /** Minimum vertical distance between group markers. */
 export const MARKER_MIN_GAP = 64;
+/** Below this content width the timeline drops from two columns to one. */
+export const COLUMN_BREAKPOINT_PX = 760;
 
 /** Where the cursor was anchored before a zoom, so the view can stay put after. */
 export interface ZoomAnchor {

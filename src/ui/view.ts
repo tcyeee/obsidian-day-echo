@@ -23,6 +23,7 @@ import {
   SWAP_IN_MS,
   MARKER_MIN_GAP,
   REPRESENTATIVES,
+  COLUMN_BREAKPOINT_PX,
   type ZoomAnchor,
 } from "./view-constants";
 import { buildCard, buildFoldCard, estimateHeight, type CardContext } from "./card-builder";
@@ -59,6 +60,12 @@ export class DayEchoView extends ItemView {
     [];
   /** Re-anchors markers when column heights change (expansion, resize). */
   private colObserver: ResizeObserver | null = null;
+  /** How many card columns the flow currently renders: 1 below
+   * COLUMN_BREAKPOINT_PX, 2 above it. */
+  private columns: 1 | 2 = 2;
+  /** Watches the pane's own width (not the window's) so a narrow split pane
+   * drops to one column even in a wide Obsidian window. */
+  private widthObserver: ResizeObserver | null = null;
   /** Label inside the sticky current-group indicator. */
   private stickyLabelEl: HTMLElement | null = null;
   /** Marker tops (px, relative to .de-inner) cached by positionMarkers so
@@ -106,6 +113,8 @@ export class DayEchoView extends ItemView {
     this.imgObserver = null;
     this.colObserver?.disconnect();
     this.colObserver = null;
+    this.widthObserver?.disconnect();
+    this.widthObserver = null;
     this.stopScrollGlide();
     this.scrollEl = null;
     this.spacerEl = null;
@@ -164,6 +173,18 @@ export class DayEchoView extends ItemView {
       passive: false,
     });
     this.registerDomEvent(this.scrollEl, "scroll", () => this.updateSticky());
+
+    // Measure synchronously so the first render already uses the right column
+    // count; the observer below only reacts to later resizes.
+    this.columns = this.scrollEl.clientWidth < COLUMN_BREAKPOINT_PX ? 1 : 2;
+    this.widthObserver = new ResizeObserver((records) => {
+      const width = records[0]?.contentRect.width ?? 0;
+      const next = width < COLUMN_BREAKPOINT_PX ? 1 : 2;
+      if (next === this.columns) return;
+      this.columns = next;
+      this.renderTimeline();
+    });
+    this.widthObserver.observe(this.scrollEl);
 
     this.renderZoomSwitch(root);
     this.renderTimeline();
@@ -503,13 +524,13 @@ export class DayEchoView extends ItemView {
         t("view.today")
       ),
       this.unfolded,
-      estimateHeight
+      estimateHeight,
+      this.columns
     );
     const flow = this.listEl.createDiv({ cls: "de-flow" });
-    const cols = [
-      flow.createDiv({ cls: "de-col" }),
-      flow.createDiv({ cls: "de-col" }),
-    ];
+    const cols = Array.from({ length: this.columns }, () =>
+      flow.createDiv({ cls: "de-col" })
+    );
     const ctx: CardContext = {
       app: this.app,
       component: this,
