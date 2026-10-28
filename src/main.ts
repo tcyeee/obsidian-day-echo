@@ -18,7 +18,7 @@ import {
   DEFAULT_SETTINGS,
   DayEchoSettingTab,
 } from "./settings";
-import { t, setLocale } from "./i18n";
+import { t, setLocale, currentLocale } from "./i18n";
 
 export default class DayEchoPlugin extends Plugin {
   settings: DayEchoSettings;
@@ -270,14 +270,19 @@ interface LocationContext {
  * IP-based lookup (flagging VPN/proxy exits with a "(VPN?)" marker) when
  * device location is unavailable, denied, or its coordinates can't be
  * reverse-geocoded to a place name.
+ *
+ * Place names come back in the plugin's current locale, so a note created
+ * under the Chinese locale gets Chinese place names; switching the language
+ * setting later only affects notes created afterward.
  */
 async function resolveLocationContext(): Promise<LocationContext | null> {
+  const locale = currentLocale();
   const coords = await fetchDeviceCoords();
   if (coords) {
-    const location = await reverseGeocode(coords.lat, coords.lon);
+    const location = await reverseGeocode(coords.lat, coords.lon, locale);
     if (location) return { location, lat: coords.lat, lon: coords.lon };
   }
-  const geo = await fetchLocation();
+  const geo = await fetchLocation(locale);
   if (!geo) return null;
   const location = geo.proxy ? `${geo.location} (VPN?)` : geo.location;
   return { location, lat: geo.lat, lon: geo.lon };

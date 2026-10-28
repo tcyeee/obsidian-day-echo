@@ -4,10 +4,11 @@ import { requestUrl } from "obsidian";
  * IP-based geolocation via ip-api.com (free tier, no key required).
  *
  * Resolves the caller's approximate location from their network IP and returns
- * a "region-city-district" string (English place names) with empty parts
- * omitted, e.g. "Shanghai-Shanghai-Pudong" or, when the district is
- * unavailable, "Shanghai-Shanghai". English keeps frontmatter uniform and easy
- * to parse for card display.
+ * a "region-city-district" string with empty parts omitted, e.g.
+ * "Shanghai-Shanghai-Pudong" or, when the district is unavailable,
+ * "Shanghai-Shanghai". Place names come back in the requested `lang` (the
+ * plugin's resolved locale), so a note written under the Chinese locale gets
+ * Chinese place names instead of English ones.
  *
  * Province and city are usually present; district is frequently empty because
  * IP geolocation rarely resolves below city level. When the IP looks like a
@@ -17,8 +18,13 @@ import { requestUrl } from "obsidian";
  * silently.
  */
 
-const ENDPOINT =
-  "http://ip-api.com/json/?lang=en&fields=status,message,regionName,city,district,proxy,hosting,lat,lon";
+/** ip-api.com's `lang` values for the plugin's two supported locales. */
+const IP_API_LANG: Record<"en" | "zh", string> = { en: "en", zh: "zh-CN" };
+
+function buildUrl(locale: "en" | "zh"): string {
+  const lang = IP_API_LANG[locale];
+  return `http://ip-api.com/json/?lang=${lang}&fields=status,message,regionName,city,district,proxy,hosting,lat,lon`;
+}
 
 /** Abort the lookup if the network is slow; a diary card click must stay snappy. */
 const TIMEOUT_MS = 3000;
@@ -53,10 +59,10 @@ function timeout(ms: number): Promise<never> {
   );
 }
 
-export async function fetchLocation(): Promise<GeoResult | null> {
+export async function fetchLocation(locale: "en" | "zh" = "en"): Promise<GeoResult | null> {
   try {
     const res = await Promise.race([
-      requestUrl({ url: ENDPOINT }),
+      requestUrl({ url: buildUrl(locale) }),
       timeout(TIMEOUT_MS),
     ]);
     const data = res.json as IpApiResponse;

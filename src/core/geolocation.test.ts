@@ -54,6 +54,22 @@ describe("fetchLocation", () => {
     });
   });
 
+  test("requests zh-CN place names for the zh locale", async () => {
+    reply({ status: "success", regionName: "上海市", city: "上海市", district: "浦东新区" });
+    await fetchLocation("zh");
+    expect(requestUrl).toHaveBeenCalledWith({
+      url: expect.stringContaining("lang=zh-CN"),
+    });
+  });
+
+  test("defaults to English place names", async () => {
+    reply({ status: "success", regionName: "Shanghai", city: "Shanghai" });
+    await fetchLocation();
+    expect(requestUrl).toHaveBeenCalledWith({
+      url: expect.stringContaining("lang=en"),
+    });
+  });
+
   test("flags proxy IPs", async () => {
     reply({ status: "success", regionName: "Tokyo", city: "Tokyo", proxy: true });
     expect(await fetchLocation()).toEqual({

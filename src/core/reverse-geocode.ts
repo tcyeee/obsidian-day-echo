@@ -4,12 +4,13 @@ import { requestUrl } from "obsidian";
  * Coordinate-based reverse geocoding via BigDataCloud's free client-side API
  * (no key required, built for exactly this browser use case).
  *
- * Turns a latitude/longitude pair into a "region-city-locality" string
- * (English place names) with empty parts omitted, matching the shape
- * `geolocation.ts`'s IP-based lookup produces so both can feed the same
- * frontmatter field. Used with device-sourced coordinates (see
- * `device-location.ts`), so the result reflects the coordinates given, not
- * the network's exit IP.
+ * Turns a latitude/longitude pair into a "region-city-locality" string with
+ * empty parts omitted, matching the shape `geolocation.ts`'s IP-based lookup
+ * produces so both can feed the same frontmatter field. Used with
+ * device-sourced coordinates (see `device-location.ts`), so the result
+ * reflects the coordinates given, not the network's exit IP. Place names come
+ * back in the requested locale, so a note written under the Chinese locale
+ * gets Chinese place names instead of English ones.
  *
  * Any failure (offline, rate limit, malformed response) resolves to `null` so
  * callers can fall back to the IP-based lookup.
@@ -33,9 +34,13 @@ function timeout(ms: number): Promise<never> {
   );
 }
 
-export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+export async function reverseGeocode(
+  lat: number,
+  lon: number,
+  locale: "en" | "zh" = "en"
+): Promise<string | null> {
   try {
-    const url = `${ENDPOINT}?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const url = `${ENDPOINT}?latitude=${lat}&longitude=${lon}&localityLanguage=${locale}`;
     const res = await Promise.race([requestUrl({ url }), timeout(TIMEOUT_MS)]);
     const data = res.json as BigDataCloudResponse;
     const parts = [data.principalSubdivision, data.city, data.locality]
