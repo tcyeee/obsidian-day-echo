@@ -7,8 +7,6 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const NAV_CLS = "de-nav";
 /** Marker on `.view-content` establishing the positioning context for the overlay. */
 const HOST_CLS = "de-has-nav";
-/** Editor/preview sizer whose left edge marks where the note's text actually starts. */
-const CONTENT_SIZER_SELECTOR = ".cm-sizer, .markdown-preview-sizer";
 
 export interface DiaryNeighbors<T> {
   prev: T | null;
@@ -34,10 +32,8 @@ export function findNeighbors<T extends { basename: string }>(
   };
 }
 
-/** Overlays a prev/next pill pair in the bottom-left corner of daily-note views. */
+/** Overlays a prev/next pill pair, horizontally centered, at the bottom of daily-note views. */
 export class DiaryNav {
-  private observers = new Map<HTMLElement, ResizeObserver>();
-
   constructor(private plugin: DayEchoPlugin) {}
 
   /** Re-render the nav overlay on all open Markdown leaves; idempotent. */
@@ -49,11 +45,9 @@ export class DiaryNav {
 
   /** Remove every injected overlay, e.g. on unload or when the setting is off. */
   detachAll(): void {
-    for (const [content, observer] of this.observers) {
-      observer.disconnect();
-      content.removeClass(HOST_CLS);
-    }
-    this.observers.clear();
+    activeDocument
+      .querySelectorAll(`.${HOST_CLS}`)
+      .forEach((el) => el.removeClass(HOST_CLS));
     activeDocument.querySelectorAll(`.${NAV_CLS}`).forEach((el) => el.remove());
   }
 
@@ -63,8 +57,6 @@ export class DiaryNav {
     );
     if (!content) return;
     content.querySelector(`:scope > .${NAV_CLS}`)?.remove();
-    this.observers.get(content)?.disconnect();
-    this.observers.delete(content);
     content.removeClass(HOST_CLS);
 
     const file = view.file;
@@ -78,21 +70,6 @@ export class DiaryNav {
     if (next) this.button(nav, view, next, "→", t("nav.next"));
     content.addClass(HOST_CLS);
     content.appendChild(nav);
-
-    const alignNav = () => this.alignLeft(content, nav);
-    alignNav();
-    const observer = new ResizeObserver(alignNav);
-    observer.observe(content);
-    this.observers.set(content, observer);
-  }
-
-  /** Pin `nav`'s left edge to the note's own text margin, so it lines up with the content. */
-  private alignLeft(content: HTMLElement, nav: HTMLElement): void {
-    const sizer = content.querySelector<HTMLElement>(CONTENT_SIZER_SELECTOR);
-    if (!sizer) return;
-    const offset = sizer.getBoundingClientRect().left -
-      content.getBoundingClientRect().left;
-    nav.style.left = `${Math.max(offset, 0)}px`;
   }
 
   private button(

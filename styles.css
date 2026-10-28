@@ -803,12 +803,11 @@ body.day-echo-active .status-bar {
   position: relative;
 }
 
-/* Padding/max-width mirror .cm-scroller and .markdown-preview-view exactly,
-   so the pills align with the note's text in both reading and editing modes. */
 .de-nav {
   position: absolute;
   bottom: 16px;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: 8px;
   z-index: 1;
