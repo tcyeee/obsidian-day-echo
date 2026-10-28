@@ -178,6 +178,7 @@ export class DayEchoSettingTab extends PluginSettingTab {
                   .onChange(async (value) => {
                     this.plugin.settings.showLocationCard = value;
                     await this.plugin.saveSettings();
+                    void this.plugin.syncLocationCardToday(value);
                   })
               );
             },
