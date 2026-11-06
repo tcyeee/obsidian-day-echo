@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.9
+
+- Added device-based geolocation: tries the device's own location service and reverse-geocodes it (falling back to IP-based lookup only when unavailable), with a manual city override setting and an echo-location card auto-inserted into new notes showing the recorded city/weather with buttons to re-detect or hand-edit the city; place names are now localized to match the plugin's language. 新增设备定位：优先调用设备自身的位置服务并反向地理编码（仅在不可用时才回退到基于 IP 的定位），并新增手动覆盖城市的设置项，以及自动插入新笔记中的回声位置卡片，显示记录的城市/天气，可点击重新定位或手动编辑城市；地名现已根据插件语言本地化显示。
+- Fixed the diary prev/next nav pills to center horizontally instead of left-aligning, and made the location card toggle take effect immediately in today's note instead of only on the next note. 修复日记上/下篇导航胶囊按钮的对齐方式，改为水平居中而非左对齐；位置卡片的显示开关现在会立即在当天笔记中生效，而不必等到下一篇笔记创建时才生效。
+- Timeline cards now render bullet, numbered, and task lists as real markup instead of showing raw list syntax as plain text. 时间轴卡片现在会将项目符号、编号和任务列表渲染为真实的列表标记，而不再显示原始的列表语法文本。
+- Added a standalone write-note button below the timeline zoom switch to create or open today's note from anywhere in the timeline. 在时间轴缩放切换控件下方新增独立的写笔记按钮，可在时间轴任意位置创建或打开当天的笔记。
+- Timeline layout now supports an arbitrary number of columns and responds to the pane's own width (via a ResizeObserver), not just the overall window width. 时间轴布局现在支持任意列数，并根据所在面板自身的宽度响应式调整（通过 ResizeObserver），而不仅仅依赖窗口整体宽度。
+- Added settings to customize the timeline view's header title and subtitle. 新增设置项，可自定义时间轴视图的标题和副标题。
+- Moved the timeline zoom switch up to avoid overlapping nearby UI. 将时间轴缩放切换控件上移，以避免与附近的界面元素重叠。
+
 ## 0.1.8
 
 - Fixed the diary folder lookup to normalize the path read from the core Daily Notes plugin's settings, so a leading slash (e.g. "/daily") no longer silently breaks the bottom day navigation and timeline scan. 修复日记文件夹路径的读取逻辑，现在会对核心 Daily Notes 插件配置中的路径做归一化处理，避免路径开头带斜杠（如 "/daily"）时静默导致底部日期导航和时间轴扫描失效。
