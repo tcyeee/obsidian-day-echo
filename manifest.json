@@ -3,7 +3,7 @@
   "name": "Day Echo",
   "version": "0.1.9",
   "minAppVersion": "1.13.0",
-  "description": "Gather all your daily notes into one vertical timeline view.",
+  "description": "Turn scattered daily notes into one scrollable timeline — browse your journal by day, month, or year, jump to any entry in a click, and track mood or energy without losing the thread.",
   "author": "tcyeee",
   "isDesktopOnly": true
 }
