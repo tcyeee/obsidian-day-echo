@@ -4,9 +4,7 @@
 
 Day Echo is an [Obsidian](https://obsidian.md) plugin that turns your scattered daily notes into a single, scrollable timeline — so you can scan months and years of journaling at a glance, reopen any day in a click, and keep writing without losing the thread.
 
-<!-- Add a screenshot or GIF of the timeline here. -->
-
-![](./public/1.png)
+![Day Echo vertical timeline view of daily notes](./public/1.png)
 
 
 ## Features

@@ -2,7 +2,7 @@
   "name": "obsidian-day-echo",
   "version": "0.1.9",
   "packageManager": "pnpm@11.5.2",
-  "description": "Gather all your daily notes into one vertical timeline view.",
+  "description": "Turn scattered daily notes into one scrollable timeline — browse your journal by day, month, or year, jump to any entry in a click, and track mood or energy without losing the thread.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -11,8 +11,13 @@
   },
   "keywords": [
     "obsidian",
+    "obsidian-plugin",
     "daily-notes",
-    "timeline"
+    "journal",
+    "journaling",
+    "timeline",
+    "calendar",
+    "diary"
   ],
   "author": "tcyeee",
   "license": "MIT",
